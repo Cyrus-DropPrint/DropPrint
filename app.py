@@ -65,6 +65,3 @@ def get_quote():
             "print_time_sec": time_sec,
             "price": round(price, 2)
         })
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
