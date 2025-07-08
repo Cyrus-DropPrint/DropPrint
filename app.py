@@ -3,10 +3,12 @@ import subprocess
 import tempfile
 import json
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # <-- added for CORS
 
 app = Flask(__name__)
+CORS(app)  # <-- enable CORS for all routes
 
-CURAENGINE_PATH = "/usr/bin/CuraEngine"  # Update path to your CuraEngine binary
+CURAENGINE_PATH = "/usr/bin/CuraEngine"
 DEFAULT_CONFIG = "default_config.json"
 
 PRICE_PER_METER = 0.10
