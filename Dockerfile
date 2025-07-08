@@ -26,4 +26,5 @@ COPY app.py default_config.json .  # Add any other required files if needed
 EXPOSE 5000
 
 # Run the app
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]
+EXPOSE 10000
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
