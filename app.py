@@ -49,8 +49,12 @@ def get_quote():
             "-o", output_path
         ], capture_output=True, text=True)
 
-        if result.returncode != 0:
-            return jsonify({"error": "Slicing failed", "details": result.stderr}), 500
+      if result.returncode != 0:
+    print("CuraEngine error:", result.stderr)
+    return jsonify({
+        "error": "Slicing failed",
+        "details": result.stderr
+    }), 500
 
         time_sec, filament_mm = parse_gcode(output_path)
         print_hours = time_sec / 3600
