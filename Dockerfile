@@ -19,9 +19,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy your app files
-COPY app.py default_config.json .  # Add any other required files if needed
-
+COPY app.py default_config.json .
+# Add any other required files if needed
 # Expose correct port for Render
 EXPOSE 10000
 
