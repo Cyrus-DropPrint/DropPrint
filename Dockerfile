@@ -22,9 +22,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy your app files
 COPY app.py default_config.json .  # Add any other required files if needed
 
-# Expose Flask port
-EXPOSE 5000
+# Expose correct port for Render
+EXPOSE 10000
 
 # Run the app
-EXPOSE 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
