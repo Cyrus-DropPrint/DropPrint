@@ -1,23 +1,24 @@
 FROM python:3.10-slim
 
-# Install system packages
+# Install build tools and dependencies
 RUN apt-get update && \
-    apt-get install -y curl unzip && \
+    apt-get install -y git build-essential cmake && \
     apt-get clean
 
-# Download and install CuraEngine v15.04.6
-RUN curl -L -o CuraEngine.zip https://github.com/Ultimaker/CuraEngine/releases/download/15.04.6/CuraEngine-15.04.6-linux.zip && \
-    unzip CuraEngine.zip && \
-    mv CuraEngine /usr/bin/CuraEngine && \
-    chmod +x /usr/bin/CuraEngine && \
-    rm CuraEngine.zip
+# Clone legacy CuraEngine branch and build
+RUN git clone --depth 1 --branch legacy https://github.com/Ultimaker/CuraEngine.git /curaengine && \
+    mkdir /curaengine/build && \
+    cd /curaengine/build && \
+    cmake .. && \
+    make && \
+    mv CuraEngine /usr/bin/CuraEngine
 
 WORKDIR /app
 
-# Copy your application files
+# Copy app files
 COPY app.py default_config.json requirements.txt .
 
-# Install Python dependencies
+# Install python deps
 RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
