@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz \
     | tar --strip-components=1 -xz -C /usr/local
 
-# Install Conan (package manager)
+# Install Conan (C++ package manager)
 RUN pip3 install --no-cache-dir conan
 
 # Setup Conan profile (Conan 2.x compatible)
@@ -25,9 +25,10 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
     ./configure && make -j$(nproc) && make install && ldconfig && \
     cd .. && rm -rf protobuf-3.21.2 protobuf-cpp-3.21.2.tar.gz
 
-# Clone and build libArcus with a fixed commit
+# Clone and build libArcus with patched CMakeLists.txt
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
+    sed -i '41s/.*/if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")/' CMakeLists.txt && \
     mkdir build && cd build && \
     cmake .. && make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
@@ -40,10 +41,11 @@ RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/CuraEngine.g
     cp CuraEngine /usr/local/bin/ && chmod +x /usr/local/bin/CuraEngine && \
     rm -rf /tmp/CuraEngine
 
-# Your Flask/Gunicorn app
+# Setup your Flask/Gunicorn app
 WORKDIR /app
 COPY app.py default_config.json requirements.txt ./
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
+
