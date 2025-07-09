@@ -6,7 +6,6 @@ RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
     python3 python3-dev python3-pip curl wget unzip \
-    # Add python3.10-dev for specific Python library discovery
     python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -34,8 +33,8 @@ RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     # Comment out the SIP module installation
     sed -i '/install_sip_module/ s/^/#/' CMakeLists.txt && \
     mkdir build && cd build && \
-    # Point CMake to the correct Python libraries
-    cmake .. -DPYTHON_INCLUDE_DIR=/usr/include/python3.10 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.10.so && \
+    # Point CMake to the correct Python libraries AND set the build type
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DPYTHON_INCLUDE_DIR=/usr/include/python3.10 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.10.so && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
 
