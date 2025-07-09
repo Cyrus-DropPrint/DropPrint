@@ -28,7 +28,8 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
 # Clone and build libArcus with patched CMakeLists.txt and fake cpython module
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
-    sed -i '41s/.*/if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")/' CMakeLists.txt && \
+    # Fix broken CMake if condition at line 41
+    sed -i '41s|.*|if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")|' CMakeLists.txt && \
     # Create fake cpython package to satisfy find_package()
     mkdir -p /usr/local/lib/cmake/cpython && \
     echo "add_library(cpython INTERFACE)" > /usr/local/lib/cmake/cpython/cpythonConfig.cmake && \
@@ -39,8 +40,6 @@ RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
       -DPYTHON_SITE_PACKAGES_DIR=/usr/lib/python3/dist-packages && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
-
-
 
 # Clone and build CuraEngine v5.0.0
 RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
@@ -57,3 +56,4 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
+
