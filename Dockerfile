@@ -30,8 +30,8 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
 # Clone and build libArcus, forcefully disabling Python bindings
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
-    # Forcefully comment out the entire Python bindings block in the build script
-    sed -i '48,72s/^/#/' CMakeLists.txt && \
+    # Forcefully comment out the entire Python bindings block, including the final "endif"
+    sed -i '48,73s/^/#/' CMakeLists.txt && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc) && make install && \
