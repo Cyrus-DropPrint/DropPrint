@@ -6,8 +6,8 @@ RUN apt-get update && \
     apt-get clean
 
 # At this point /usr/bin/curaengine (lowercase) is available
-# Create a symlink to match uppercase usage in your code
-RUN ln -s /usr/bin/curaengine /usr/bin/CuraEngine
+# Ensure uppercase CuraEngine path exists
+RUN ln -sf /usr/bin/curaengine /usr/bin/CuraEngine
 
 WORKDIR /app
 
