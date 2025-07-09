@@ -18,9 +18,9 @@ RUN pip3 install --no-cache-dir conan
 RUN conan profile detect --force && \
     sed -i 's|compiler\.libcxx=.*|compiler.libcxx=libstdc++11|' /root/.conan2/profiles/default
 
-# Clone and build libArcus (using commit before Conan dependency)
+# Clone and build libArcus (using safe commit without Conan dependencies)
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
-    cd /tmp/libArcus && git checkout 4fa388783a502d701b4321a9730641c3ec62be5a && \
+    cd /tmp/libArcus && git checkout e0316e6233c7f8eb5f379d6e3c9b2e60b8dff48f && \
     mkdir build && cd build && \
     cmake .. && make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
