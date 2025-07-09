@@ -34,7 +34,7 @@ RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     echo "add_library(cpython INTERFACE)" > /usr/local/lib/cmake/cpython/cpythonConfig.cmake && \
     echo "set(cpython_FOUND TRUE)" >> /usr/local/lib/cmake/cpython/cpythonConfig.cmake && \
     mkdir build && cd build && \
-    cmake .. -Dcpython_DIR=/usr/local/lib/cmake/cpython && \
+    cmake .. -Dcpython_DIR=/usr/local/lib/cmake/cpython -DPYTHON_SITE_PACKAGES_DIR=/usr/lib/python3/dist-packages && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
 
