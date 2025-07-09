@@ -8,13 +8,11 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Clone and build CuraEngine legacy-compatible source
-tmpdir=$(mktemp -d) && \
-RUN git clone --depth 1 --branch 4.x $\
-    https://github.com/Ultimaker/CuraEngine.git $tmpdir && \
-    mkdir $tmpdir/build && cd $tmpdir/build && \
+RUN tmpdir=$(mktemp -d) && \
+    git clone --depth 1 --branch 4.x https://github.com/Ultimaker/CuraEngine.git "$tmpdir" && \
+    mkdir "$tmpdir/build" && cd "$tmpdir/build" && \
     cmake .. && make && cp CuraEngine /usr/local/bin/ && chmod +x /usr/local/bin/CuraEngine && \
-    rm -rf $tmpdir
-
+    rm -rf "$tmpdir"
 # App setup
 WORKDIR /app
 COPY app.py default_config.json requirements.txt ./
