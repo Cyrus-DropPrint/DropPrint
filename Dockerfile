@@ -1,11 +1,15 @@
 FROM ubuntu:22.04
+FROM ubuntu:22.04
 
-# Install dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git build-essential cmake libboost-all-dev libeigen3-dev \
+    build-essential git curl libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
     pybind11-dev python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install CMake 3.27.9 manually
+RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz | tar --strip-components=1 -xz -C /usr/local
 
 # Build and install libArcus (replaces old Arcus)
 RUN git clone --depth 1 https://github.com/Ultimaker/libArcus.git /tmp/Arcus && \
