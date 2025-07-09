@@ -27,17 +27,14 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
     ./configure && make -j$(nproc) && make install && ldconfig && \
     cd .. && rm -rf protobuf-3.21.2 protobuf-cpp-3.21.2.tar.gz
 
-# Clone and build libArcus (without Python SIP bindings)
+# Clone and build libArcus WITHOUT Python bindings
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
-    # Comment out the SIP module installation
-    sed -i '/install_sip_module/ s/^/#/' CMakeLists.txt && \
     mkdir build && cd build && \
-    # Point CMake to the correct Python libraries AND set the build type
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DPYTHON_INCLUDE_DIR=/usr/include/python3.10 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.10.so && \
+    cmake .. -DBUILD_PYTHON_BINDINGS=OFF -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
-
+    
 # Clone and build CuraEngine v5.0.0
 RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
     mkdir /tmp/CuraEngine/build && cd /tmp/CuraEngine/build && \
