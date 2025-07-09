@@ -18,7 +18,8 @@ RUN git clone --depth 1 https://github.com/Ultimaker/CuraEngine.git /curaengine 
 WORKDIR /app
 
 # Copy your Python app and config
-COPY app.py default_config.json requirements.txt .  # make sure these are in your repo root
+COPY app.py default_config.json requirements.txt .
+# make sure these are in your repo root
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
