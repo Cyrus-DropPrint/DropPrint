@@ -11,7 +11,9 @@ RUN git clone --depth 1 https://github.com/Ultimaker/CuraEngine.git /curaengine 
     mkdir /curaengine/build && cd /curaengine/build && \
     cmake .. && \
     make && \
-    cp CuraEngine /usr/local/bin/
+    cp CuraEngine /usr/local/bin/ && \
+    chmod +x /usr/local/bin/CuraEngine
+
 
 # Set working directory for your app
 WORKDIR /app
