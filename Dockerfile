@@ -4,7 +4,7 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
-    python3 python3-pip curl && \
+    python3 python3-pip curl wget unzip autoconf automake libtool && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install latest CMake (needed version 3.23+)
@@ -18,12 +18,18 @@ RUN pip3 install --no-cache-dir conan
 RUN conan profile detect --force && \
     sed -i 's|compiler\.libcxx=.*|compiler.libcxx=libstdc++11|' /root/.conan2/profiles/default
 
+# Build and install protobuf v21.12 (to satisfy minimum protobuf >= 3.17.1)
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-cpp-21.12.zip && \
+    unzip protobuf-cpp-21.12.zip && cd protobuf-21.12 && \
+    ./configure && make -j$(nproc) && make install && ldconfig && \
+    cd .. && rm -rf protobuf-21.12 protobuf-cpp-21.12.zip
+
+# Clone and build libArcus at commit 5193de3403e5fac887fd18a945ba43ce4e103f90
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
     mkdir build && cd build && \
     cmake .. && make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
-
 
 # Clone and build CuraEngine v5.0.0
 RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
