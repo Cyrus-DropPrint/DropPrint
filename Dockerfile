@@ -1,3 +1,4 @@
+# Dockerfile to build CuraEngine + libArcus (no SIP bindings)
 FROM ubuntu:22.04
 
 # Install system dependencies and Python pip
@@ -24,16 +25,20 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
     cd protobuf-3.21.2 && \
     ./configure && make -j$(nproc) && make install && ldconfig && \
     cd .. && rm -rf protobuf-3.21.2 protobuf-cpp-3.21.2.tar.gz
+
 # Clone and build libArcus (without Python SIP bindings)
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
     sed -i '/install_sip_module/ s/^/#/' CMakeLists.txt && \
     sed -i '41s|.*|if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")|' CMakeLists.txt && \
+    mkdir -p /usr/local/lib/cmake/cpython && \
+    echo "add_library(cpython INTERFACE)" > /usr/local/lib/cmake/cpython/cpythonConfig.cmake && \
+    echo "set(cpython_FOUND TRUE)" >> /usr/local/lib/cmake/cpython/cpythonConfig.cmake && \
     mkdir build && cd build && \
-    cmake .. -Dcpython_DIR=/usr/local/lib/cmake/cpython && \
+    cmake .. -DCMAKE_PREFIX_PATH=/usr/local/lib/cmake && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
-    
+
 # Clone and build CuraEngine v5.0.0
 RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
     mkdir /tmp/CuraEngine/build && cd /tmp/CuraEngine/build && \
@@ -49,4 +54,3 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
-
