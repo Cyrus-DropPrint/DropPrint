@@ -14,13 +14,12 @@ RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.2
 # Clone standard-project-settings required by libArcus
 RUN git clone --depth 1 https://github.com/Ultimaker/standard-project-settings.git /opt/standard-project-settings
 
-# Build and install libArcus (depends on standard-project-settings)
-RUN git clone --depth 1 https://github.com/Ultimaker/libArcus.git /tmp/Arcus && \
+# Build and install libArcus (safe version)
+RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/libArcus.git /tmp/Arcus && \
     mkdir /tmp/Arcus/build && cd /tmp/Arcus/build && \
-    cmake .. -DCMAKE_MODULE_PATH=/opt/standard-project-settings/cmake && \
-    make && make install && \
+    cmake .. && make && make install && \
     rm -rf /tmp/Arcus
-
+    
 # Build CuraEngine (v5.0.0) with Arcus support
 RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
     mkdir /tmp/CuraEngine/build && cd /tmp/CuraEngine/build && \
