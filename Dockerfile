@@ -4,7 +4,7 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
-    python3 python3-pip curl wget unzip && \
+    python3 python3-dev python3-pip curl wget unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install latest CMake (needed version 3.23+)
@@ -25,12 +25,13 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
     ./configure && make -j$(nproc) && make install && ldconfig && \
     cd .. && rm -rf protobuf-3.21.2 protobuf-cpp-3.21.2.tar.gz
 
-# Clone and build libArcus with patched CMakeLists.txt
+# Clone and build libArcus with patched CMakeLists.txt and cpython_DIR set
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
     sed -i '41s/.*/if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")/' CMakeLists.txt && \
     mkdir build && cd build && \
-    cmake .. && make -j$(nproc) && make install && \
+    cmake .. -Dcpython_DIR=/usr/lib/python3.10 && \
+    make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
 
 # Clone and build CuraEngine v5.0.0
@@ -48,4 +49,3 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
-
