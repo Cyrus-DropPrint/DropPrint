@@ -5,7 +5,9 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
-    python3 python3-dev python3-pip curl wget unzip && \
+    python3 python3-dev python3-pip curl wget unzip \
+    # Add python3.10-dev for specific Python library discovery
+    python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install latest CMake (needed version 3.23+)
@@ -29,13 +31,11 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
 # Clone and build libArcus (without Python SIP bindings)
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
+    # Comment out the SIP module installation
     sed -i '/install_sip_module/ s/^/#/' CMakeLists.txt && \
-    sed -i '41s|.*|if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")|' CMakeLists.txt && \
-    mkdir -p /usr/local/lib/cmake/cpython && \
-    echo "add_library(cpython INTERFACE)" > /usr/local/lib/cmake/cpython/cpythonConfig.cmake && \
-    echo "set(cpython_FOUND TRUE)" >> /usr/local/lib/cmake/cpython/cpythonConfig.cmake && \
     mkdir build && cd build && \
-    cmake .. -DCMAKE_PREFIX_PATH=/usr/local/lib/cmake && \
+    # Point CMake to the correct Python libraries
+    cmake .. -DPYTHON_INCLUDE_DIR=/usr/include/python3.10 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.10.so && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
 
