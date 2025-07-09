@@ -18,12 +18,12 @@ RUN pip3 install --no-cache-dir conan
 RUN conan profile detect --force && \
     sed -i 's|compiler\.libcxx=.*|compiler.libcxx=libstdc++11|' /root/.conan2/profiles/default
 
-# Clone and build libArcus (using safe commit without Conan dependencies)
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
-    cd /tmp/libArcus && git checkout e0316e6233c7f8eb5f379d6e3c9b2e60b8dff48f && \
+    cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
     mkdir build && cd build && \
     cmake .. && make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
+
 
 # Clone and build CuraEngine v5.0.0
 RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
