@@ -5,13 +5,13 @@ RUN apt-get update && apt-get install -y \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Build Arcus first
+ENV GIT_TERMINAL_PROMPT=0
+
 RUN git clone --depth 1 https://github.com/Ultimaker/Arcus.git /tmp/Arcus && \
     mkdir /tmp/Arcus/build && cd /tmp/Arcus/build && \
     cmake .. && make && make install && \
     rm -rf /tmp/Arcus
 
-# Build CuraEngine with Arcus installed
 RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
     mkdir /tmp/CuraEngine/build && cd /tmp/CuraEngine/build && \
     cmake .. -DArcus_DIR=/usr/local/lib/cmake/Arcus && \
