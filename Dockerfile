@@ -22,12 +22,14 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
     cd protobuf-3.21.2 && ./configure && make -j$(nproc) && make install && ldconfig && \
     cd .. && rm -rf protobuf-3.21.2 protobuf-cpp-3.21.2.tar.gz
 
-# 5) libArcus — clone, patch out SIP, build & install
+# 5) libArcus — clone, patch, build & install
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && \
     git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
-    # comment out the install_sip_module() lines so SIP won’t ask for site‑packages  
+    # (a) comment out any install_sip_module calls
     sed -i '/install_sip_module/ s/^/#/' CMakeLists.txt && \
+    # (b) fix the broken 'if' line at around line 41
+    sed -i 's|if (CMAKE_BUILD_TYPE STREQUAL.*)|if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")|' CMakeLists.txt && \
     mkdir build && cd build && \
     cmake .. && make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
