@@ -15,8 +15,7 @@ RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.2
 RUN pip3 install --no-cache-dir conan
 
 RUN conan profile detect --force && \
-    conan config set general.default_profile=default && \
-    conan profile set settings.compiler.libcxx=libstdc++11 --profile=default
+    conan profile update settings.compiler.libcxx=libstdc++11 default
 
 # Clone and build libArcus
 RUN git clone --depth 1 https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
