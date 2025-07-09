@@ -14,13 +14,14 @@ RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.2
 # Install Conan (package manager)
 RUN pip3 install --no-cache-dir conan
 
+# Setup Conan profile (Conan 2.x compatible)
 RUN conan profile detect --force && \
     sed -i 's|compiler\.libcxx=.*|compiler.libcxx=libstdc++11|' /root/.conan2/profiles/default
 
-# Clone and build libArcus
-RUN git clone --depth 1 https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
-    mkdir /tmp/libArcus/build && cd /tmp/libArcus/build && \
-    conan install .. --build=missing && \
+# Clone and build libArcus (using commit before Conan dependency)
+RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
+    cd /tmp/libArcus && git checkout 4fa388783a502d701b4321a9730641c3ec62be5a && \
+    mkdir build && cd build && \
     cmake .. && make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
 
@@ -32,6 +33,7 @@ RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/CuraEngine.g
     cp CuraEngine /usr/local/bin/ && chmod +x /usr/local/bin/CuraEngine && \
     rm -rf /tmp/CuraEngine
 
+# Your Flask/Gunicorn app
 WORKDIR /app
 COPY app.py default_config.json requirements.txt ./
 RUN pip3 install --no-cache-dir -r requirements.txt
