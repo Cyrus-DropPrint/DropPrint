@@ -1,12 +1,12 @@
 FROM python:3.10-slim
 
-# Install build tools and dependencies
+# Install build tools
 RUN apt-get update && \
     apt-get install -y git build-essential cmake && \
     apt-get clean
 
-# Clone legacy CuraEngine branch and build
-RUN git clone --depth 1 --branch legacy https://github.com/Ultimaker/CuraEngine.git /curaengine && \
+# Clone and build CuraEngine v15.04.6
+RUN git clone --depth 1 --branch 15.04.6 https://github.com/Ultimaker/CuraEngine.git /curaengine && \
     mkdir /curaengine/build && \
     cd /curaengine/build && \
     cmake .. && \
@@ -15,10 +15,10 @@ RUN git clone --depth 1 --branch legacy https://github.com/Ultimaker/CuraEngine.
 
 WORKDIR /app
 
-# Copy app files
+# Copy your application files
 COPY app.py default_config.json requirements.txt .
 
-# Install python deps
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
