@@ -1,32 +1,29 @@
-# Use a lightweight Python base
+# Use slim Python base
 FROM python:3.10-slim
 
-# Install system dependencies required to build CuraEngine
+# Install system packages
 RUN apt-get update && \
-    apt-get install -y build-essential cmake git curl unzip && \
+    apt-get install -y curl unzip && \
     apt-get clean
 
-# Build CuraEngine from source
-RUN git clone --depth 1 https://github.com/Ultimaker/CuraEngine.git /curaengine && \
-    mkdir /curaengine/build && \
-    cd /curaengine/build && \
-    cmake .. && \
-    make && \
-    mv CuraEngine /usr/bin/CuraEngine
+# Download and install CuraEngine binary (v15.04.6 works reliably)
+RUN curl -L -o CuraEngine.zip https://github.com/Ultimaker/CuraEngine/releases/download/15.04.6/CuraEngine-15.04.6-linux.zip && \
+    unzip CuraEngine.zip && \
+    mv CuraEngine /usr/bin/CuraEngine && \
+    chmod +x /usr/bin/CuraEngine && \
+    rm CuraEngine.zip
 
 # Set working directory
 WORKDIR /app
 
 # Copy your Python app and config
 COPY app.py default_config.json requirements.txt .
-# make sure these are in your repo root
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose the port used by your Flask app
+# Expose port
 EXPOSE 10000
 
 # Start the app using Gunicorn
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
-
