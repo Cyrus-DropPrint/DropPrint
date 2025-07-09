@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install protobuf 3.21.2 (to satisfy minimum protobuf >= 3.17.1)
-RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.21.2/protobuf-cpp-3.21.2.tar.gz && \
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/protobuf-cpp-3.21.2.tar.gz && \
     tar -xzf protobuf-cpp-3.21.2.tar.gz && cd protobuf-3.21.2 && \
     ./configure && make -j$(nproc) && make install && ldconfig && \
     cd .. && rm -rf protobuf-3.21.2 protobuf-cpp-3.21.2.tar.gz
