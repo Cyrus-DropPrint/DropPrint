@@ -11,10 +11,14 @@ RUN apt-get update && apt-get install -y \
 # Install CMake 3.27.9 manually
 RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz | tar --strip-components=1 -xz -C /usr/local
 
-# Build and install libArcus (replaces old Arcus)
+# Clone standard-project-settings required by libArcus
+RUN git clone --depth 1 https://github.com/Ultimaker/standard-project-settings.git /opt/standard-project-settings
+
+# Build and install libArcus (depends on standard-project-settings)
 RUN git clone --depth 1 https://github.com/Ultimaker/libArcus.git /tmp/Arcus && \
     mkdir /tmp/Arcus/build && cd /tmp/Arcus/build && \
-    cmake .. && make && make install && \
+    cmake .. -DCMAKE_MODULE_PATH=/opt/standard-project-settings/cmake && \
+    make && make install && \
     rm -rf /tmp/Arcus
 
 # Build CuraEngine (v5.0.0) with Arcus support
