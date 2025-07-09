@@ -3,14 +3,9 @@ FROM ubuntu:22.04
 # Install system dependencies and Python pip
 RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
-    libcurl4-openssl-dev libtbb-dev python3 python3-pip curl wget unzip && \
+    libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
+    python3 python3-pip curl wget unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Install protobuf 3.21.2 (to satisfy minimum protobuf >= 3.17.1)
-RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/protobuf-cpp-3.21.2.tar.gz && \
-    tar -xzf protobuf-cpp-3.21.2.tar.gz && cd protobuf-3.21.2 && \
-    ./configure && make -j$(nproc) && make install && ldconfig && \
-    cd .. && rm -rf protobuf-3.21.2 protobuf-cpp-3.21.2.tar.gz
 
 # Install latest CMake (needed version 3.23+)
 RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz \
@@ -23,7 +18,14 @@ RUN pip3 install --no-cache-dir conan
 RUN conan profile detect --force && \
     sed -i 's|compiler\.libcxx=.*|compiler.libcxx=libstdc++11|' /root/.conan2/profiles/default
 
-# Clone and build libArcus (using safe commit)
+# Install protobuf 3.21.2 (to satisfy minimum protobuf >= 3.17.1)
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/protobuf-cpp-3.21.2.tar.gz && \
+    tar --no-same-owner -xzf protobuf-cpp-3.21.2.tar.gz && \
+    cd protobuf-3.21.2 && \
+    ./configure && make -j$(nproc) && make install && ldconfig && \
+    cd .. && rm -rf protobuf-3.21.2 protobuf-cpp-3.21.2.tar.gz
+
+# Clone and build libArcus with a fixed commit
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
     mkdir build && cd build && \
