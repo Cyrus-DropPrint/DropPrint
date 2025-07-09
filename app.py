@@ -8,7 +8,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-CURAENGINE_PATH = "/usr/bin/CuraEngine"
+CURAENGINE_PATH = "/usr/bin/curaengine"
 DEFAULT_CONFIG = "default_config.json"
 
 PRICE_PER_METER = 0.10
