@@ -1,67 +1,75 @@
 import os
-import subprocess
 import tempfile
-import json
+import subprocess
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
 
-CURAENGINE_PATH = "/usr/bin/curaengine"
-DEFAULT_CONFIG = "default_config.json"
+CURAENGINE_PATH = "/usr/local/bin/CuraEngine"
+PRINTER_PROFILE = "default_config.json"  # ensure this is copied in your Docker image
 
-PRICE_PER_METER = 0.10
-PRICE_PER_HOUR = 2.00
-SETUP_FEE = 1.00
-
-def parse_gcode(file_path):
-    time_sec = 0
-    filament_mm = 0
-    with open(file_path, 'r') as f:
-        for line in f:
-            if line.startswith(";TIME:"):
-                time_sec = int(line.split(":")[1])
-            if line.startswith(";Filament used [mm]:"):
-                filament_mm = float(line.split(":")[1])
-    return time_sec, filament_mm
-
-@app.route('/quote', methods=['POST'])
+@app.route("/quote", methods=["POST"])
 def get_quote():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+    if "file" not in request.files:
+        return jsonify({"error": "No file part"}), 400
 
-    file = request.files['file']
-    if not file.filename.endswith('.stl'):
-        return jsonify({"error": "Only .stl files supported"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        input_path = os.path.join(tmpdir, "input.stl")
-        output_path = os.path.join(tmpdir, "output.gcode")
-        file.save(input_path)
+    # Save uploaded STL to temp file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".stl") as tmp_stl:
+        file.save(tmp_stl.name)
+        stl_path = tmp_stl.name
 
-        result = subprocess.run([
-            CURAENGINE_PATH,
-            "slice",
+    # Output path for sliced GCODE (not really needed here, but CuraEngine requires -o)
+    output_gcode = tempfile.NamedTemporaryFile(delete=False, suffix=".gcode").name
+
+    try:
+        # Run CuraEngine slice command
+        proc = subprocess.run([
+            CURAENGINE_PATH, "slice",
             "-v",
-            "-j", DEFAULT_CONFIG,
-            "-l", input_path,
-            "-o", output_path
+            "-j", PRINTER_PROFILE,
+            "-l", stl_path,
+            "-o", output_gcode
         ], capture_output=True, text=True)
 
-        if result.returncode != 0:
-            print("CuraEngine error:", result.stderr)
-            return jsonify({
-                "error": "Slicing failed",
-                "details": result.stderr
-            }), 500
+        if proc.returncode != 0:
+            return jsonify({"error": "CuraEngine failed", "details": proc.stderr}), 500
 
-        time_sec, filament_mm = parse_gcode(output_path)
-        print_hours = time_sec / 3600
-        price = filament_mm / 1000 * PRICE_PER_METER + print_hours * PRICE_PER_HOUR + SETUP_FEE
+        print_time = None
+        filament = None
+
+        # Parse output for print time and filament
+        for line in proc.stdout.splitlines():
+            if "Print time (s):" in line:
+                try:
+                    print_time = float(line.split(":")[1].strip())
+                except ValueError:
+                    pass
+            if "Filament (mm^3):" in line:
+                try:
+                    filament = float(line.split(":")[1].strip())
+                except ValueError:
+                    pass
+
+        if print_time is None or filament is None:
+            return jsonify({"error": "Failed to parse CuraEngine output"}), 500
 
         return jsonify({
-            "filament_mm": round(filament_mm, 2),
-            "print_time_sec": time_sec,
-            "price": round(price, 2)
+            "print_time_seconds": print_time,
+            "filament_mm3": filament
         })
+
+    finally:
+        # Cleanup temp files
+        try:
+            os.remove(stl_path)
+            os.remove(output_gcode)
+        except Exception:
+            pass
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
