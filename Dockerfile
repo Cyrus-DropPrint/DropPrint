@@ -1,24 +1,19 @@
 FROM python:3.10-slim
 
-# Install system packages and CuraEngine from Debian
+# Install CuraEngine and other packages
 RUN apt-get update && \
     apt-get install -y cura-engine unzip && \
     apt-get clean
 
-# At this point /usr/bin/curaengine (lowercase) is available
-# Ensure uppercase CuraEngine path exists
+# Symlink lowercase curaengine to the expected uppercase path
 RUN ln -sf /usr/bin/curaengine /usr/bin/CuraEngine
 
 WORKDIR /app
 
-# Copy your application files
 COPY app.py default_config.json requirements.txt .
 
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose the port your app will listen on
 EXPOSE 10000
 
-# Start with Gunicorn on port 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
