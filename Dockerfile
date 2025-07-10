@@ -1,4 +1,4 @@
-# Final Build: Using the exact executable path discovered from the logs
+# Final Build: Keep the entire extracted AppImage to preserve libraries
 
 FROM ubuntu:22.04
 
@@ -7,16 +7,16 @@ RUN apt-get update && apt-get install -y \
     wget python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Download the official Cura 5.10.1 AppImage, extract it, and copy out the engine
+# Download the official Cura 5.10.1 AppImage, extract it, and link the engine
 RUN wget https://github.com/Ultimaker/Cura/releases/download/5.10.1/UltiMaker-Cura-5.10.1-linux-x64.AppImage -O /tmp/Cura.AppImage && \
     chmod +x /tmp/Cura.AppImage && \
     cd /tmp && ./Cura.AppImage --appimage-extract >/dev/null && \
-    # This is the corrected copy command using the path we discovered from the logs
-    cp /tmp/squashfs-root/CuraEngine /usr/local/bin/CuraEngine && \
-    # Make it executable
-    chmod +x /usr/local/bin/CuraEngine && \
-    # Clean up
-    rm -rf /tmp/Cura.AppImage /tmp/squashfs-root
+    # Move the entire extracted directory to a permanent location
+    mv /tmp/squashfs-root /opt/cura && \
+    # Create a symbolic link so the app can find the engine
+    ln -s /opt/cura/CuraEngine /usr/local/bin/CuraEngine && \
+    # Clean up only the downloaded AppImage
+    rm -rf /tmp/Cura.AppImage
 
 # Setup your Flask/Gunicorn app
 WORKDIR /app
