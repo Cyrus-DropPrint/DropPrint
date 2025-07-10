@@ -1,19 +1,33 @@
-# Strategy 3 (Revised): Use the official Ultimaker pre-built image
+# Strategy 2: Build a modern, stable version of CuraEngine from source
 
-# Stage 1: Get the pre-built CuraEngine from the official Ultimaker image
-FROM ultimaker/cura-engine:latest as builder
-# The engine is located at /usr/bin/CuraEngine in this image
-
-# Stage 2: Build your final application image
 FROM ubuntu:22.04
 
-# Install only the runtime dependencies needed
+# Install system dependencies and Python pip
 RUN apt-get update && apt-get install -y \
+    git build-essential cmake libboost-all-dev libeigen3-dev \
+    libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
     python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy the pre-built CuraEngine executable from the first stage
-COPY --from=builder /usr/bin/CuraEngine /usr/local/bin/CuraEngine
+# Install a recent version of CMake (still good practice)
+RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz \
+    | tar --strip-components=1 -xz -C /usr/local
+
+# Part 1: Build the modern libArcus (v6.1.1) that CuraEngine 5.7.2 needs
+RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
+    cd /tmp/libArcus && git checkout 6.1.1 && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=OFF && \
+    make -j$(nproc) && make install && \
+    rm -rf /tmp/libArcus
+
+# Part 2: Build the modern CuraEngine (v5.7.2)
+RUN git clone --depth 1 --branch 5.7.2 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
+    mkdir /tmp/CuraEngine/build && cd /tmp/CuraEngine/build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && \
+    cp CuraEngine /usr/local/bin/ && chmod +x /usr/local/bin/CuraEngine && \
+    rm -rf /tmp/CuraEngine
 
 # Setup your Flask/Gunicorn app
 WORKDIR /app
