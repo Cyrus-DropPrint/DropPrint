@@ -1,4 +1,6 @@
-# Final Build: Targeting the true root cause of the syntax error
+
+
+# Final attempt: Build the original 5.0.0 versions with a robust patch
 
 FROM ubuntu:22.04
 
@@ -27,14 +29,13 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
     ./configure && make -j$(nproc) && make install && ldconfig && \
     cd .. && rm -rf protobuf-3.21.2 protobuf-cpp-3.21.2.tar.gz
 
-# Build libArcus with the targeted fix for the syntax error
+# Build libArcus with the robust patch
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
-    # This is the key fix: Make the 'if' statement on line 42 robust.
-    sed -i '42s/.*/if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")/' CMakeLists.txt && \
+    # The definitive fix: Find the conditional and replace it with if(FALSE)
+    sed -i 's/if (BUILD_PYTHON_BINDINGS)/if(FALSE)/' CMakeLists.txt && \
     mkdir build && cd build && \
-    # Explicitly disable python bindings and set the build type
-    cmake .. -DBUILD_PYTHON_BINDINGS=OFF -DCMAKE_BUILD_TYPE=Release && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
 
