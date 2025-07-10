@@ -2,12 +2,12 @@
 
 FROM ubuntu:22.04
 
-# Install system dependencies
+# Install system dependencies, including the new ones and curl
 RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
-    python3 python3-pip \
-    # Install the other new dependencies that ARE available via apt-get
+    python3 python3-pip curl \
+    # Add new dependencies for CuraEngine 5.7.2+
     librange-v3-dev libspdlog-dev rapidjson-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
