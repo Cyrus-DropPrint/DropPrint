@@ -1,4 +1,4 @@
-# Diagnostic Build: Inspecting CuraEngine build output
+# Diagnostic Build: Inspecting CuraEngine build output (using git clone for libArcus)
 
 FROM ubuntu:22.04
 
@@ -13,14 +13,13 @@ RUN apt-get update && apt-get install -y \
 RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz \
     | tar --strip-components=1 -xz -C /usr/local
 
-# Part 1: Build libArcus by downloading the source archive directly
-RUN wget https://github.com/Ultimaker/libArcus/archive/b09334a17e132e36783d73954e7323861a7a0f02.zip -O /tmp/libArcus.zip && \
-    unzip /tmp/libArcus.zip -d /tmp && \
-    cd /tmp/libArcus-b09334a17e132e36783d73954e7323861a7a0f02 && \
+# Part 1: Build libArcus by cloning the specific version tag (more reliable)
+RUN git clone --depth 1 --branch 6.1.1 https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
+    cd /tmp/libArcus && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=OFF && \
     make -j$(nproc) && make install && \
-    rm -rf /tmp/libArcus-b09334a17e132e36783d73954e7323861a7a0f02 /tmp/libArcus.zip
+    rm -rf /tmp/libArcus
 
 # Part 2: Build the Clipper2 library from source
 RUN git clone https://github.com/AngusJohnson/Clipper2.git /tmp/Clipper2 && \
@@ -54,4 +53,3 @@ WORKDIR /app
 COPY app.py default_config.json requirements.txt ./
 EXPOSE 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
-
