@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-CURAENGINE_PATH = "/usr/local/bin/CuraEngine"
+CURAENGINE_PATH = "CuraEngine"
 PRINTER_PROFILE = "default_config.json"  # ensure this is copied in your Docker image
 
 @app.route("/quote", methods=["POST"])
