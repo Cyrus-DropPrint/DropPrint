@@ -28,14 +28,17 @@ def get_quote():
 
     try:
         # Run CuraEngine slice command
-        proc = subprocess.run([
-            CURAENGINE_PATH, "slice",
-            "-v",
-            "-j", PRINTER_PROFILE,
-            "-l", stl_path,
-            "-o", output_gcode
-        ], capture_output=True, text=True)
-
+     proc = subprocess.run([
+        "/usr/local/bin/CuraEngine",  # <--- Updated path
+        "gcode",
+        "-o",
+        "/tmp/output.gcode",
+        "-j",
+        "/app/default_config.json",
+        "-l",
+        stl_file_path
+    ], capture_output=True, text=True)
+        
         if proc.returncode != 0:
             return jsonify({"error": "CuraEngine failed", "details": proc.stderr}), 500
 
