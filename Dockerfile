@@ -1,4 +1,4 @@
-# Strategy 2: Build a modern, stable version of CuraEngine from source
+# Final Build: Using direct archive downloads to bypass git issues
 
 FROM ubuntu:22.04
 
@@ -6,21 +6,21 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
-    python3 python3-pip curl \
-    librange-v3-dev libspdlog-dev rapidjson-dev && \
+    python3 python3-pip curl wget unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install a recent version of CMake
 RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz \
     | tar --strip-components=1 -xz -C /usr/local
 
-# Part 1: Build the modern libArcus (using the specific commit hash for Cura 5.7.2)
-RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
-    cd /tmp/libArcus && git checkout b09334a17e132e36783d73954e7323861a7a0f02 && \
+# Part 1: Build libArcus by downloading the source archive directly
+RUN wget https://github.com/Ultimaker/libArcus/archive/b09334a17e132e36783d73954e7323861a7a0f02.zip -O /tmp/libArcus.zip && \
+    unzip /tmp/libArcus.zip -d /tmp && \
+    cd /tmp/libArcus-b09334a17e132e36783d73954e7323861a7a0f02 && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=OFF && \
     make -j$(nproc) && make install && \
-    rm -rf /tmp/libArcus
+    rm -rf /tmp/libArcus-b09334a17e132e36783d73954e7323861a7a0f02 /tmp/libArcus.zip
 
 # Part 2: Build the Clipper2 library from source
 RUN git clone https://github.com/AngusJohnson/Clipper2.git /tmp/Clipper2 && \
