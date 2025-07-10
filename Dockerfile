@@ -5,8 +5,7 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
-    python3 python3-dev python3-pip curl wget unzip \
-    python3.10-dev && \
+    python3 python3-dev python3-pip curl wget unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install latest CMake (needed version 3.23+)
@@ -30,13 +29,13 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
 # Clone and build libArcus, forcefully disabling Python bindings
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
-    # Forcefully comment out the entire Python bindings block, including the final "endif"
-    sed -i '48,73s/^/#/' CMakeLists.txt && \
+    # Find the Python build 'if' and change it to 'if(FALSE)' to disable it
+    sed -i 's/if (BUILD_PYTHON_BINDINGS)/if(FALSE)/' CMakeLists.txt && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
-    
+
 # Clone and build CuraEngine v5.0.0
 RUN git clone --depth 1 --branch 5.0.0 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
     mkdir /tmp/CuraEngine/build && cd /tmp/CuraEngine/build && \
