@@ -1,15 +1,3 @@
-Excellent, thank you. Using the latest stable release, **5.10.1**, is the perfect solution.
-
-I have updated the `Dockerfile` with the correct and verified download link for that specific version. This method is the most reliable and bypasses all the previous issues.
-
-This will work.
-
------
-
-### The Final Dockerfile
-
-```dockerfile
-# Final Strategy: Extract CuraEngine from the official 5.10.1 AppImage release
 
 FROM ubuntu:22.04
 
@@ -32,4 +20,4 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
-```
+
