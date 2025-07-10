@@ -29,13 +29,11 @@ RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v21.2/pro
     ./configure && make -j$(nproc) && make install && ldconfig && \
     cd .. && rm -rf protobuf-3.21.2 protobuf-cpp-3.21.2.tar.gz
 
-# Build libArcus with the robust patch
+# Build libArcus WITHOUT Python bindings
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && git checkout 5193de3403e5fac887fd18a945ba43ce4e103f90 && \
-    # The definitive fix: Find the conditional and replace it with if(FALSE)
-    sed -i 's/if (BUILD_PYTHON_BINDINGS)/if(FALSE)/' CMakeLists.txt && \
     mkdir build && cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON_BINDINGS=OFF && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
 
