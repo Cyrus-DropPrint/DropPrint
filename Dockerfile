@@ -2,11 +2,13 @@
 
 FROM ubuntu:22.04
 
-# Install system dependencies and Python pip
+# Install system dependencies, including the new ones required by modern CuraEngine
 RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
-    python3 python3-pip && \
+    python3 python3-pip \
+    # Add new dependencies for CuraEngine 5.7.2+
+    libclipper2-dev librange-v3-dev libspdlog-dev rapidjson-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install a recent version of CMake (still good practice)
