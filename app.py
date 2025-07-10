@@ -5,8 +5,9 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-CURAENGINE_PATH = "CuraEngine"
-PRINTER_PROFILE = "default_config.json"  # ensure this is copied in your Docker image
+CURAENGINE_PATH = "/opt/cura/CuraEngine"
+PRINTER_PROFILE = "default_config.json" 
+# ensure this is copied in your Docker image
 
 @app.route("/quote", methods=["POST"])
 def get_quote():
