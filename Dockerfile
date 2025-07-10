@@ -1,18 +1,18 @@
-# Final Strategy: Use a multi-stage build to copy the official pre-built CuraEngine
+# Final Strategy: Extract CuraEngine from the official AppImage release
 
-# Stage 1: Get the pre-built CuraEngine from the official Ultimaker image
-FROM ultimaker/cura-engine:latest as builder
-
-# Stage 2: Build your final application image
 FROM ubuntu:22.04
 
-# Install only the runtime dependencies needed for your Python app
+# Install only the absolute minimum dependencies needed
 RUN apt-get update && apt-get install -y \
-    python3 python3-pip && \
+    wget python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy the pre-built CuraEngine executable from the first stage
-COPY --from=builder /usr/bin/CuraEngine /usr/local/bin/CuraEngine
+# Download the official Cura AppImage, extract it, and copy out the CuraEngine binary
+RUN wget https://github.com/Ultimaker/Cura/releases/download/5.7.2/Ultimaker-Cura-5.7.2-linux.AppImage -O /tmp/Cura.AppImage && \
+    chmod +x /tmp/Cura.AppImage && \
+    cd /tmp && ./Cura.AppImage --appimage-extract && \
+    cp /tmp/squashfs-root/usr/bin/CuraEngine /usr/local/bin/ && \
+    rm -rf /tmp/Cura.AppImage /tmp/squashfs-root
 
 # Setup your Flask/Gunicorn app
 WORKDIR /app
