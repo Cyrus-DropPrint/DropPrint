@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y \
 RUN wget https://github.com/Ultimaker/Cura/releases/download/5.10.1/UltiMaker-Cura-5.10.1-linux-x64.AppImage -O /tmp/Cura.AppImage && \
     chmod +x /tmp/Cura.AppImage && \
     cd /tmp && ./Cura.AppImage --appimage-extract >/dev/null && \
-    # Find the CuraEngine executable within the extracted directory and copy it
-    find /tmp/squashfs-root -name CuraEngine -exec cp {} /usr/local/bin/ \; && \
+    # Find the executable by its new name and copy it to the path the script expects
+    find /tmp/squashfs-root -name "UltiMaker-Cura-Engine" -exec cp {} /usr/local/bin/CuraEngine \; && \
     rm -rf /tmp/Cura.AppImage /tmp/squashfs-root
 
 # Setup your Flask/Gunicorn app
