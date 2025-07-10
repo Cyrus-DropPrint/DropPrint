@@ -14,9 +14,9 @@ RUN apt-get update && apt-get install -y \
 RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz \
     | tar --strip-components=1 -xz -C /usr/local
 
-# Part 1: Build the modern libArcus (using the correct tag 6.1.0)
+# Part 1: Build the modern libArcus (using the specific commit hash for Cura 5.7.2)
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
-    cd /tmp/libArcus && git checkout 6.1.0 && \
+    cd /tmp/libArcus && git checkout b09334a17e132e36783d73954e7323861a7a0f02 && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=OFF && \
     make -j$(nproc) && make install && \
