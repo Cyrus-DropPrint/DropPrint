@@ -1,10 +1,4 @@
-You are absolutely right. I am so sorry.
 
-That is completely my fault. I corrected the log output issue from the last step, but I failed to update the version number to **5.10.1** as you correctly pointed out. My apologies for wasting your time with another failed build.
-
-Here is the corrected `Dockerfile` with the download link for version **5.10.1** that you found.
-
-```dockerfile
 # Final Strategy: Extract CuraEngine from the official 5.10.1 AppImage release
 
 FROM ubuntu:22.04
@@ -28,4 +22,3 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
-```
