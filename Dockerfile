@@ -1,13 +1,12 @@
-# Strategy 2 (Revised): Build modern CuraEngine and its dependencies from source
+# Strategy 2: Build a modern, stable version of CuraEngine from source
 
 FROM ubuntu:22.04
 
-# Install system dependencies, including the new ones and curl
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
     python3 python3-pip curl \
-    # Add new dependencies for CuraEngine 5.7.2+
     librange-v3-dev libspdlog-dev rapidjson-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -15,15 +14,15 @@ RUN apt-get update && apt-get install -y \
 RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz \
     | tar --strip-components=1 -xz -C /usr/local
 
-# Part 1: Build the modern libArcus
+# Part 1: Build the modern libArcus (using the correct tag 6.1.0)
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
-    cd /tmp/libArcus && git checkout 6.1.1 && \
+    cd /tmp/libArcus && git checkout 6.1.0 && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=OFF && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
 
-# Part 2: Build the Clipper2 library from source (the missing dependency)
+# Part 2: Build the Clipper2 library from source
 RUN git clone https://github.com/AngusJohnson/Clipper2.git /tmp/Clipper2 && \
     cd /tmp/Clipper2 && git checkout v1.3.0 && \
     mkdir build && cd build && \
@@ -31,7 +30,15 @@ RUN git clone https://github.com/AngusJohnson/Clipper2.git /tmp/Clipper2 && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/Clipper2
 
-# Part 3: Build the modern CuraEngine
+# Part 3: Build the libnest2d library
+RUN git clone https://github.com/tamasmeszaros/libnest2d.git /tmp/libnest2d && \
+    cd /tmp/libnest2d && git checkout 1.3.0-cura && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && make install && \
+    rm -rf /tmp/libnest2d
+
+# Part 4: Build the modern CuraEngine
 RUN git clone --depth 1 --branch 5.7.2 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
     mkdir /tmp/CuraEngine/build && cd /tmp/CuraEngine/build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release && \
