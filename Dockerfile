@@ -1,4 +1,4 @@
-# Debugging Build: List all files to find the correct engine name
+# Final Build: Using the discovered executable path from the AppImage
 
 FROM ubuntu:22.04
 
@@ -7,13 +7,21 @@ RUN apt-get update && apt-get install -y \
     wget python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Download the official Cura 5.10.1 AppImage, extract it, and list its contents
+# Download the official Cura 5.10.1 AppImage, extract it, and copy out the engine
 RUN wget https://github.com/Ultimaker/Cura/releases/download/5.10.1/UltiMaker-Cura-5.10.1-linux-x64.AppImage -O /tmp/Cura.AppImage && \
     chmod +x /tmp/Cura.AppImage && \
     cd /tmp && ./Cura.AppImage --appimage-extract >/dev/null && \
-    # This is the debugging command to list all files
-    ls -R /tmp/squashfs-root && \
-    # The copy command below will fail, which is expected for this step
-    find /tmp/squashfs-root -name "This_Will_Fail" -exec cp {} /usr/local/bin/CuraEngine \;
+    # This is the corrected copy command using the path we found
+    cp /tmp/squashfs-root/usr/bin/UltiMaker-CuraEngine /usr/local/bin/CuraEngine && \
+    # Make it executable
+    chmod +x /usr/local/bin/CuraEngine && \
+    # Clean up
+    rm -rf /tmp/Cura.AppImage /tmp/squashfs-root
 
-# The rest of the Dockerfile is not needed for this test, as the build will fail above.
+# Setup your Flask/Gunicorn app
+WORKDIR /app
+COPY app.py default_config.json requirements.txt ./
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+EXPOSE 10000
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
