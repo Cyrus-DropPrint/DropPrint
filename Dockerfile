@@ -1,4 +1,4 @@
-# Final Build: Adding the executable to the system PATH
+# Final Build: Using an absolute path to the executable
 
 FROM ubuntu:22.04
 
@@ -15,9 +15,6 @@ RUN wget https://github.com/Ultimaker/Cura/releases/download/5.10.1/UltiMaker-Cu
     mv /tmp/squashfs-root /opt/cura && \
     # Clean up the downloaded AppImage
     rm -rf /tmp/Cura.AppImage
-
-# Add the new location to the system's PATH environment variable
-ENV PATH="/opt/cura:${PATH}"
 
 # Setup your Flask/Gunicorn app
 WORKDIR /app
