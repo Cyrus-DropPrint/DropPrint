@@ -1,7 +1,7 @@
-# Strategy 3: Use a multi-stage build to copy a pre-built CuraEngine
+# Strategy 3 (Revised): Use the official Ultimaker pre-built image
 
-# Stage 1: Get the pre-built CuraEngine from a public image
-FROM jlesage/cura-novnc:latest as builder
+# Stage 1: Get the pre-built CuraEngine from the official Ultimaker image
+FROM ultimaker/cura-engine:latest as builder
 # The engine is located at /usr/bin/CuraEngine in this image
 
 # Stage 2: Build your final application image
