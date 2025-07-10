@@ -1,4 +1,4 @@
-# Final Build: Using the exact executable path discovered from the logs
+# Final Build: Using the correct, discovered executable path
 
 FROM ubuntu:22.04
 
@@ -11,12 +11,12 @@ RUN apt-get update && apt-get install -y \
 RUN wget https://github.com/Ultimaker/Cura/releases/download/5.10.1/UltiMaker-Cura-5.10.1-linux-x64.AppImage -O /tmp/Cura.AppImage && \
     chmod +x /tmp/Cura.AppImage && \
     cd /tmp && ./Cura.AppImage --appimage-extract >/dev/null && \
-    # This is the corrected copy command using the path we discovered
-    cp /opt/cura/CuraEngine /usr/local/bin/CuraEngine && \
+    # This is the corrected copy command using the path we discovered from the logs
+    cp /tmp/squashfs-root/CuraEngine /usr/local/bin/CuraEngine && \
     # Make it executable
     chmod +x /usr/local/bin/CuraEngine && \
     # Clean up
-    rm -rf /tmp/Cura.AppImage /opt/cura
+    rm -rf /tmp/Cura.AppImage /tmp/squashfs-root
 
 # Setup your Flask/Gunicorn app
 WORKDIR /app
