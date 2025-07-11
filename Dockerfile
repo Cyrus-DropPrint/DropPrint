@@ -6,8 +6,9 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y \
     git build-essential cmake libboost-all-dev libeigen3-dev \
     libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
-    python3 python3-pip curl \
-    libclipper2-dev librange-v3-dev libspdlog-dev rapidjson-dev && \
+    python3 python3-pip curl wget unzip \
+    # Install the other new dependencies that ARE available via apt-get
+    librange-v3-dev libspdlog-dev rapidjson-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install a recent version of CMake
@@ -29,7 +30,7 @@ RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
 
-# Part 2: Build the Clipper2 library from source
+# Part 2: Build the Clipper2 library from source (the missing dependency)
 RUN git clone https://github.com/AngusJohnson/Clipper2.git /tmp/Clipper2 && \
     cd /tmp/Clipper2 && git checkout v1.3.0 && \
     mkdir build && cd build && \
