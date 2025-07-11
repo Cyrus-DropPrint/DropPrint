@@ -1,4 +1,4 @@
-# FINAL BUILD: Adding FUSE library for AppImage support
+# FINAL BUILD: Adding FUSE library and robust Gunicorn settings
 
 FROM ubuntu:22.04
 
@@ -21,6 +21,5 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Expose the port
 EXPOSE 10000
 
-# Run the application with the robust Gunicorn configuration
+# Run the application with a robust Gunicorn configuration
 CMD ["gunicorn", "--worker-class", "gevent", "--timeout", "300", "--bind", "0.0.0.0:10000", "app:app"]
-
