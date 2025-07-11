@@ -1,19 +1,20 @@
-# FINAL ATTEMPT: Using a different pre-built image (with a specific version tag)
+# FINAL STRATEGY: Multi-Stage Build with a verified LinuxServer.io image
 
-# --- Stage 1: Get the pre-built CuraEngine from a community image ---
-FROM thopiekar/cura-slicer:5.6.0 as builder
+# --- Stage 1: The Builder ---
+# This stage uses a reliable, community-verified image
+FROM linuxserver/cura:5.7.1 as builder
 
-# --- Stage 2: Build your final application ---
+# --- Stage 2: The Final Application ---
 FROM ubuntu:22.04
 
-# Install only the runtime dependencies for your Python app
+# Install only the runtime dependencies for Python
 RUN apt-get update && apt-get install -y \
     python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy the pre-built CuraEngine executable from the first stage
-# The path in this image is /usr/bin/cura-engine
-COPY --from=builder /usr/bin/cura-engine /usr/local/bin/CuraEngine
+# The path in this image is /usr/bin/CuraEngine
+COPY --from=builder /usr/bin/CuraEngine /usr/local/bin/CuraEngine
 
 # Make it executable
 RUN chmod +x /usr/local/bin/CuraEngine
