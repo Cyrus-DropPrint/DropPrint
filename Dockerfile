@@ -15,22 +15,23 @@ RUN apt-get update && apt-get install -y \
 RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz \
     | tar --strip-components=1 -xz -C /usr/local
 
-# --- NEW STEP: Build the standardprojectsettings dependency ---
-RUN git clone https://github.com/Ultimaker/standardprojectsettings.git /tmp/standardprojectsettings && \
-    cd /tmp/standardprojectsettings && \
+# --- Build the standardprojectsettings dependency using wget ---
+RUN wget https://github.com/Ultimaker/standardprojectsettings/archive/refs/heads/main.zip -O /tmp/sps.zip && \
+    unzip /tmp/sps.zip -d /tmp && \
+    cd /tmp/standardprojectsettings-main && \
     mkdir build && cd build && \
     cmake .. && make install && \
-    rm -rf /tmp/standardprojectsettings
+    rm -rf /tmp/standardprojectsettings-main /tmp/sps.zip
 
 # Part 1: Build the modern libArcus
 RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
-    cd /tmp/libArcus && \
+    cd /tmp/libArcus && git checkout 6.1.0 && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=OFF && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/libArcus
 
-# Part 2: Build the Clipper2 library from source (the missing dependency)
+# Part 2: Build the Clipper2 library from source
 RUN git clone https://github.com/AngusJohnson/Clipper2.git /tmp/Clipper2 && \
     cd /tmp/Clipper2 && git checkout v1.3.0 && \
     mkdir build && cd build && \
@@ -59,5 +60,7 @@ WORKDIR /app
 COPY app.py default_config.json requirements.txt ./
 RUN pip3 install --no-cache-dir -r requirements.txt
 
+EXPOSE 10000
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
 EXPOSE 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
