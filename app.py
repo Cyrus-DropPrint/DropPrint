@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # The path to the CuraEngine executable within the Docker container
 # This was corrected in the Dockerfile to /usr/local/bin/CuraEngine
-CURAENGINE_PATH = "/opt/cura/CuraEngine"
+CURAENGINE_PATH = "/usr/local/bin/CuraEngine"
 PRINTER_PROFILE = "default_config.json" # ensure this is copied in your Docker image
 
 @app.route("/quote", methods=["POST"])
