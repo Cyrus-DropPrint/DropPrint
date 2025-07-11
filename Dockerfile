@@ -1,22 +1,22 @@
-# FINAL ATTEMPT: Using a different pre-built image to bypass registry issues
+# Final Build: Using AppImage extraction to bypass Render's Docker Hub issue
 
-# --- Stage 1: Get the pre-built CuraEngine from a community image ---
-FROM thopiekar/cura-slicer:latest as builder
-
-# --- Stage 2: Build your final application ---
 FROM ubuntu:22.04
 
-# Install only the runtime dependencies for your Python app
+# Install only the absolute minimum dependencies needed
 RUN apt-get update && apt-get install -y \
-    python3 python3-pip && \
+    wget python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy the pre-built CuraEngine executable from the first stage
-# The path in this image is /usr/bin/cura-engine
-COPY --from=builder /usr/bin/cura-engine /usr/local/bin/CuraEngine
-
-# Make it executable
-RUN chmod +x /usr/local/bin/CuraEngine
+# Download the official Cura 5.10.1 AppImage, extract it, and copy out the engine
+RUN wget https://github.com/Ultimaker/Cura/releases/download/5.10.1/UltiMaker-Cura-5.10.1-linux-x64.AppImage -O /tmp/Cura.AppImage && \
+    chmod +x /tmp/Cura.AppImage && \
+    cd /tmp && ./Cura.AppImage --appimage-extract >/dev/null && \
+    # This is the corrected copy command using the path we discovered
+    cp /tmp/squashfs-root/CuraEngine /usr/local/bin/CuraEngine && \
+    # Make it executable
+    chmod +x /usr/local/bin/CuraEngine && \
+    # Clean up
+    rm -rf /tmp/Cura.AppImage /tmp/squashfs-root
 
 # Setup your Flask/Gunicorn app
 WORKDIR /app
