@@ -5,7 +5,6 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Use the AppImage as the executable
 CURAENGINE_PATH = "/app/Cura.AppImage"
 PRINTER_PROFILE = "default_config.json"
 
@@ -25,9 +24,12 @@ def get_quote():
     output_gcode = tempfile.NamedTemporaryFile(delete=False, suffix=".gcode").name
 
     try:
-        # Construct the command to be passed to the AppImage
-        # The "--" is crucial. It tells the AppImage to pass all subsequent arguments
-        # directly to its internal CuraEngine command.
+        # --- THIS IS THE CRITICAL NEW CODE ---
+        # Create a copy of the current environment and set the Qt variable
+        proc_env = os.environ.copy()
+        proc_env["QT_QPA_PLATFORM"] = "offscreen"
+        # ------------------------------------
+
         command_to_run = [
             CURAENGINE_PATH,
             "--",
@@ -38,8 +40,13 @@ def get_quote():
             "-o", output_gcode
         ]
 
-        # Run the AppImage with the slice command
-        proc = subprocess.run(command_to_run, capture_output=True, text=True)
+        # Run the AppImage with the modified environment
+        proc = subprocess.run(
+            command_to_run,
+            capture_output=True,
+            text=True,
+            env=proc_env  # Pass the modified environment here
+        )
 
         if proc.returncode != 0:
             return jsonify({"error": "CuraEngine failed inside AppImage", "details": proc.stderr}), 500
