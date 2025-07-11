@@ -23,3 +23,4 @@ EXPOSE 10000
 
 # Run the application with the robust Gunicorn configuration
 CMD ["gunicorn", "--worker-class", "gevent", "--timeout", "300", "--bind", "0.0.0.0:10000", "app:app"]
+
