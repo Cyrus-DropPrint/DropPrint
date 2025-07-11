@@ -1,7 +1,7 @@
-# FINAL STRATEGY: Multi-Stage Build on a reliable platform
+# FINAL ATTEMPT: Using a different pre-built image (with a specific version tag)
 
 # --- Stage 1: Get the pre-built CuraEngine from a community image ---
-FROM thopiekar/cura-slicer:latest as builder
+FROM thopiekar/cura-slicer:5.7.2 as builder
 
 # --- Stage 2: Build your final application ---
 FROM ubuntu:22.04
