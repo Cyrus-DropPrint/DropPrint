@@ -1,11 +1,29 @@
-# FINAL BUILD: Adding FUSE, OpenGL, and EGL libraries for AppImage support
+# FINAL BUILD: Forcing headless Qt operation
 
 FROM ubuntu:22.04
 
-# Install all necessary dependencies
+# Install all necessary dependencies for a headless Qt/GUI application
 RUN apt-get update && apt-get install -y \
-    wget python3 python3-pip libfuse2 libgl1-mesa-glx libegl1-mesa && \
+    wget \
+    python3 \
+    python3-pip \
+    libfuse2 \
+    libgl1-mesa-glx \
+    libegl1-mesa \
+    libfontconfig1 \
+    libglib2.0-0 \
+    libxkbcommon-x11-0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-render-util0 \
+    libxcb-xinerama0 \
+    libdbus-1-3 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# --- THIS IS THE CRITICAL NEW STEP ---
+# Force Qt to run in "offscreen" mode without a display
+ENV QT_QPA_PLATFORM=offscreen
 
 # Set the working directory
 WORKDIR /app
