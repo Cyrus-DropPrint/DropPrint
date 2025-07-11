@@ -1,16 +1,27 @@
-# FINAL DIAGNOSTIC: List all files to find the correct engine name in this image
+# FINAL STRATEGY: Multi-Stage Build on a reliable platform
 
 # --- Stage 1: The Builder ---
-# This stage's only job is to download the image so we can inspect it
+# This stage uses a reliable, community-verified image
 FROM linuxserver/cura:5.7.1 as builder
 
-# --- Stage 2: The Inspector ---
-# This stage just lists the files from the builder
+# --- Stage 2: The Final Application ---
 FROM ubuntu:22.04
 
-# This is the debugging command to list all files from the builder stage
-RUN echo "########### START OF FILE LIST ###########" && \
-    ls -R / --from=builder && \
-    echo "########### END OF FILE LIST ###########"
+# Install only the runtime dependencies for Python
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# The Dockerfile will stop here after listing the files.
+# Copy the pre-built CuraEngine executable from the first stage
+COPY --from=builder /usr/bin/CuraEngine /usr/local/bin/CuraEngine
+
+# Make it executable
+RUN chmod +x /usr/local/bin/CuraEngine
+
+# Setup your Flask/Gunicorn app
+WORKDIR /app
+COPY app.py default_config.json requirements.txt ./
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+EXPOSE 10000
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
