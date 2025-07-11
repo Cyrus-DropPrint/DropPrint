@@ -1,11 +1,28 @@
-# FINAL DIAGNOSTIC V2: List contents of the builder stage directly
+# FINAL STRATEGY: Multi-Stage Build on a reliable platform
 
 # --- Stage 1: The Builder ---
-# This stage's only job is to download the image and list its contents
+# This stage uses a reliable, community-verified image
 FROM linuxserver/cura:5.7.1 as builder
 
-# --- THIS IS THE CORRECTED DIAGNOSTIC STEP ---
-# This command will list all files inside the /usr/bin directory of the image
-RUN echo "########### LISTING /usr/bin IN BUILDER ###########" && \
-    ls -l /usr/bin && \
-    echo "########### END OF FILE LIST ###########"
+# --- Stage 2: The Final Application ---
+FROM ubuntu:22.04
+
+# Install only the runtime dependencies for your Python app
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# --- THIS IS THE CORRECTED LINE ---
+# Copy the pre-built executable using the correct name
+COPY --from=builder /usr/bin/cura-engine /usr/local/bin/CuraEngine
+
+# Make it executable
+RUN chmod +x /usr/local/bin/CuraEngine
+
+# Setup your Flask/Gunicorn app
+WORKDIR /app
+COPY app.py default_config.json requirements.txt ./
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+EXPOSE 10000
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
