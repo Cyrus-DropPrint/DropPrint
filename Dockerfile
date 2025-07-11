@@ -21,8 +21,8 @@ RUN chmod +x /usr/local/bin/CuraEngine
 WORKDIR /app
 COPY app.py default_config.json requirements.txt ./
 
-# --- THIS IS THE CORRECTED LINE ---
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+# Install Python packages without the unsupported flag
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Expose the port and set a long timeout for Gunicorn
 EXPOSE 10000
