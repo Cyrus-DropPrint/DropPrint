@@ -62,5 +62,3 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
-EXPOSE 10000
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
