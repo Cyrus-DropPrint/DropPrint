@@ -1,4 +1,4 @@
-# FINAL BUILD: Forcing headless Qt operation
+# FINAL BUILD v3
 
 FROM ubuntu:22.04
 
@@ -21,10 +21,6 @@ RUN apt-get update && apt-get install -y \
     libdbus-1-3 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# --- THIS IS THE CRITICAL NEW STEP ---
-# Force Qt to run in "offscreen" mode without a display
-ENV QT_QPA_PLATFORM=offscreen
-
 # Set the working directory
 WORKDIR /app
 
@@ -41,4 +37,3 @@ EXPOSE 10000
 
 # Run the application with a robust Gunicorn configuration
 CMD ["gunicorn", "--worker-class", "gevent", "--timeout", "300", "--bind", "0.0.0.0:10000", "app:app"]
-
