@@ -1,10 +1,10 @@
-# FINAL BUILD: Adding FUSE library and robust Gunicorn settings
+# FINAL BUILD: Adding FUSE and OpenGL libraries for AppImage support
 
 FROM ubuntu:22.04
 
-# Install all necessary dependencies, including libfuse2
+# Install all necessary dependencies, including libfuse2 and libgl1-mesa-glx
 RUN apt-get update && apt-get install -y \
-    wget python3 python3-pip libfuse2 && \
+    wget python3 python3-pip libfuse2 libgl1-mesa-glx && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
