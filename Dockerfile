@@ -1,4 +1,4 @@
-# Diagnostic Build: Inspecting CuraEngine build output (using git clone for libArcus)
+# Diagnostic Build: Inspecting CuraEngine build output (using git clone for libArcus - no specific branch)
 
 FROM ubuntu:22.04
 
@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y \
 RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz \
     | tar --strip-components=1 -xz -C /usr/local
 
-# Part 1: Build libArcus by cloning the specific version tag (more reliable)
-RUN git clone --depth 1 --branch 6.1.1 https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
+# Part 1: Build libArcus by cloning the default branch (most reliable)
+RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
     cd /tmp/libArcus && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=OFF && \
