@@ -10,21 +10,22 @@ monkey.patch_all() # Patches standard libraries to be gevent-friendly
 
 app = Flask(__name__)
 
-# In-memory "database" to store job status and results
+# --- In-memory "database" to store job status and results ---
 jobs = {}
+
+# This is the correct path from our new Dockerfile
+CURAENGINE_PATH = "/usr/local/bin/CuraEngine"
+PRINTER_PROFILE = "default_config.json"
 
 def run_slicing_job(job_id, stl_path, gcode_path):
     """This function runs in a gevent greenlet"""
     try:
-        proc_env = os.environ.copy()
-        proc_env["QT_QPA_PLATFORM"] = "offscreen"
-
+        # We call CuraEngine directly now
         command_to_run = [
-            "/app/Cura.AppImage",
-            "--",
+            CURAENGINE_PATH,
             "slice",
             "-v",
-            "-j", "default_config.json",
+            "-j", PRINTER_PROFILE,
             "-l", stl_path,
             "-o", gcode_path
         ]
@@ -32,8 +33,7 @@ def run_slicing_job(job_id, stl_path, gcode_path):
         proc = subprocess.run(
             command_to_run,
             capture_output=True,
-            text=True,
-            env=proc_env
+            text=True
         )
 
         if proc.returncode != 0:
@@ -105,3 +105,4 @@ def get_job_status(job_id):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
