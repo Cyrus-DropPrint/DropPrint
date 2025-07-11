@@ -1,15 +1,76 @@
 import os
 import tempfile
 import subprocess
-from flask import Flask, request, jsonify
+import uuid
+import threading
+from flask import Flask, request, jsonify, url_for
 
 app = Flask(__name__)
 
-CURAENGINE_PATH = "/app/Cura.AppImage"
-PRINTER_PROFILE = "default_config.json"
+# --- In-memory "database" to store job status and results ---
+# For a real application, you would use a real database like Redis or a database service.
+jobs = {}
+
+def run_slicing_job(job_id, stl_path, gcode_path):
+    """This function runs in the background"""
+    try:
+        proc_env = os.environ.copy()
+        proc_env["QT_QPA_PLATFORM"] = "offscreen"
+
+        command_to_run = [
+            "/app/Cura.AppImage",
+            "--",
+            "slice",
+            "-v",
+            "-j", "default_config.json",
+            "-l", stl_path,
+            "-o", gcode_path
+        ]
+        
+        proc = subprocess.run(
+            command_to_run,
+            capture_output=True,
+            text=True,
+            env=proc_env
+        )
+
+        if proc.returncode != 0:
+            jobs[job_id] = {"status": "failed", "error": proc.stderr}
+            return
+
+        print_time = None
+        filament = None
+        for line in proc.stdout.splitlines():
+            if "Print time (s):" in line:
+                print_time = float(line.split(":")[1].strip())
+            if "Filament (mm^3):" in line:
+                filament = float(line.split(":")[1].strip())
+
+        if print_time is None or filament is None:
+            jobs[job_id] = {"status": "failed", "error": "Failed to parse CuraEngine output"}
+            return
+            
+        # Store the successful result
+        jobs[job_id] = {
+            "status": "completed",
+            "result": {
+                "print_time_seconds": print_time,
+                "filament_mm3": filament
+            }
+        }
+
+    except Exception as e:
+        jobs[job_id] = {"status": "failed", "error": str(e)}
+    finally:
+        # Clean up the temporary files
+        try:
+            os.remove(stl_path)
+            os.remove(gcode_path)
+        except OSError:
+            pass
 
 @app.route("/quote", methods=["POST"])
-def get_quote():
+def submit_quote_job():
     if "file" not in request.files:
         return jsonify({"error": "No file part"}), 400
 
@@ -17,71 +78,40 @@ def get_quote():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
+    # Save the uploaded file temporarily
     with tempfile.NamedTemporaryFile(delete=False, suffix=".stl") as tmp_stl:
         file.save(tmp_stl.name)
         stl_path = tmp_stl.name
 
     output_gcode = tempfile.NamedTemporaryFile(delete=False, suffix=".gcode").name
 
-    try:
-        # --- THIS IS THE CRITICAL NEW CODE ---
-        # Create a copy of the current environment and set the Qt variable
-        proc_env = os.environ.copy()
-        proc_env["QT_QPA_PLATFORM"] = "offscreen"
-        # ------------------------------------
+    # Create a unique ID for this job
+    job_id = str(uuid.uuid4())
+    
+    # Store initial job status
+    jobs[job_id] = {"status": "processing"}
 
-        command_to_run = [
-            CURAENGINE_PATH,
-            "--",
-            "slice",
-            "-v",
-            "-j", PRINTER_PROFILE,
-            "-l", stl_path,
-            "-o", output_gcode
-        ]
+    # Start the slicing job in a background thread
+    thread = threading.Thread(
+        target=run_slicing_job,
+        args=(job_id, stl_path, output_gcode)
+    )
+    thread.start()
 
-        # Run the AppImage with the modified environment
-        proc = subprocess.run(
-            command_to_run,
-            capture_output=True,
-            text=True,
-            env=proc_env  # Pass the modified environment here
-        )
+    # Immediately return the job ID and a status URL
+    return jsonify({
+        "job_id": job_id,
+        "status": "processing",
+        "status_url": url_for('get_job_status', job_id=job_id, _external=True)
+    }), 202
 
-        if proc.returncode != 0:
-            return jsonify({"error": "CuraEngine failed inside AppImage", "details": proc.stderr}), 500
+@app.route("/status/<job_id>", methods=["GET"])
+def get_job_status(job_id):
+    job = jobs.get(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
 
-        print_time = None
-        filament = None
-
-        # Parse output for print time and filament
-        for line in proc.stdout.splitlines():
-            if "Print time (s):" in line:
-                try:
-                    print_time = float(line.split(":")[1].strip())
-                except ValueError:
-                    pass
-            if "Filament (mm^3):" in line:
-                try:
-                    filament = float(line.split(":")[1].strip())
-                except ValueError:
-                    pass
-
-        if print_time is None or filament is None:
-            return jsonify({"error": "Failed to parse CuraEngine output"}), 500
-
-        return jsonify({
-            "print_time_seconds": print_time,
-            "filament_mm3": filament
-        })
-
-    finally:
-        # Cleanup temp files
-        try:
-            os.remove(stl_path)
-            os.remove(output_gcode)
-        except Exception:
-            pass
+    return jsonify(job)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
