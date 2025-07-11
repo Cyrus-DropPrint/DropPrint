@@ -1,4 +1,4 @@
-# Final Build: Keep the entire extracted AppImage to preserve libraries
+# FINAL DIAGNOSTIC: List all files in the permanent directory
 
 FROM ubuntu:22.04
 
@@ -7,19 +7,17 @@ RUN apt-get update && apt-get install -y \
     wget python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Download the official Cura 5.10.1 AppImage, extract it, and move it
+# Download, extract, move, and then LIST all files in the final location
 RUN wget https://github.com/Ultimaker/Cura/releases/download/5.10.1/UltiMaker-Cura-5.10.1-linux-x64.AppImage -O /tmp/Cura.AppImage && \
     chmod +x /tmp/Cura.AppImage && \
     cd /tmp && ./Cura.AppImage --appimage-extract >/dev/null && \
     # Move the entire extracted directory to a permanent location
     mv /tmp/squashfs-root /opt/cura && \
+    # This is the debugging command to list all files
+    echo "########### START OF FINAL FILE LIST ###########" && \
+    ls -R /opt/cura && \
+    echo "########### END OF FINAL FILE LIST ###########" && \
     # Clean up the downloaded AppImage
     rm /tmp/Cura.AppImage
 
-# Setup your Flask/Gunicorn app
-WORKDIR /app
-COPY app.py default_config.json requirements.txt ./
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-EXPOSE 10000
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
+# The Dockerfile will stop here after listing the files.
