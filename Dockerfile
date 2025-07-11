@@ -1,4 +1,4 @@
-# Final Build: Setting the library path AND execute permissions
+# Final Build: Setting the library path for the executable
 
 FROM ubuntu:22.04
 
@@ -7,17 +7,16 @@ RUN apt-get update && apt-get install -y \
     wget python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Download, extract, move, and set permissions
+# Download, extract, and move to a permanent location
 RUN wget https://github.com/Ultimaker/Cura/releases/download/5.10.1/UltiMaker-Cura-5.10.1-linux-x64.AppImage -O /tmp/Cura.AppImage && \
     chmod +x /tmp/Cura.AppImage && \
     cd /tmp && ./Cura.AppImage --appimage-extract >/dev/null && \
     # Move the entire extracted directory to a permanent location
     mv /tmp/squashfs-root /opt/cura && \
-    # THIS IS THE CRITICAL NEW STEP: Make the engine executable
-    chmod +x /opt/cura/CuraEngine && \
     # Clean up the downloaded AppImage
     rm /tmp/Cura.AppImage
 
+# --- THIS IS THE CRITICAL NEW STEP ---
 # Add the bundled library paths to the environment
 ENV LD_LIBRARY_PATH="/opt/cura/lib:/opt/cura/usr/lib:${LD_LIBRARY_PATH}"
 
