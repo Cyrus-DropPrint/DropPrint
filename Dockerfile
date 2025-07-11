@@ -1,11 +1,10 @@
-# FINAL DIAGNOSTIC: List the contents of the final build stage
+# FINAL DIAGNOSTIC: Search the entire filesystem for the executable
 
 # --- Stage 1: The Builder ---
-# This stage's only job is to download the image so we can inspect it
 FROM linuxserver/cura:5.7.1 as builder
 
 # --- THIS IS THE DIAGNOSTIC STEP ---
-# This command will list all files inside the /usr/bin directory of the image
-RUN echo "########### LISTING /usr/bin IN BUILDER ###########" && \
-    ls -l /usr/bin && \
-    echo "########### END OF FILE LIST ###########"
+# This command will search the entire image for the correct file
+RUN echo "########### SEARCHING FOR THE ENGINE FILE ###########" && \
+    find / -type f -iname "*cura*engine*" && \
+    echo "########### SEARCH COMPLETE ###########"
