@@ -7,18 +7,20 @@ from flask import Flask, request, jsonify, url_for
 
 app = Flask(__name__)
 
-# --- In-memory "database" to store job status and results ---
-# For a real application, you would use a real database like Redis or a database service.
+# In-memory "database" to store job status and results
 jobs = {}
 
 def run_slicing_job(job_id, stl_path, gcode_path):
     """This function runs in the background"""
     try:
+        # No longer need to set environment here, we pass it as an argument
         proc_env = os.environ.copy()
-        proc_env["QT_QPA_PLATFORM"] = "offscreen"
 
         command_to_run = [
             "/app/Cura.AppImage",
+            # --- THIS IS THE CRITICAL NEW LINE ---
+            "-platform", "offscreen",
+            # ------------------------------------
             "--",
             "slice",
             "-v",
@@ -50,7 +52,6 @@ def run_slicing_job(job_id, stl_path, gcode_path):
             jobs[job_id] = {"status": "failed", "error": "Failed to parse CuraEngine output"}
             return
             
-        # Store the successful result
         jobs[job_id] = {
             "status": "completed",
             "result": {
@@ -62,7 +63,6 @@ def run_slicing_job(job_id, stl_path, gcode_path):
     except Exception as e:
         jobs[job_id] = {"status": "failed", "error": str(e)}
     finally:
-        # Clean up the temporary files
         try:
             os.remove(stl_path)
             os.remove(gcode_path)
@@ -78,27 +78,21 @@ def submit_quote_job():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
-    # Save the uploaded file temporarily
     with tempfile.NamedTemporaryFile(delete=False, suffix=".stl") as tmp_stl:
         file.save(tmp_stl.name)
         stl_path = tmp_stl.name
 
     output_gcode = tempfile.NamedTemporaryFile(delete=False, suffix=".gcode").name
-
-    # Create a unique ID for this job
-    job_id = str(uuid.uuid4())
     
-    # Store initial job status
+    job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "processing"}
 
-    # Start the slicing job in a background thread
     thread = threading.Thread(
         target=run_slicing_job,
         args=(job_id, stl_path, output_gcode)
     )
     thread.start()
 
-    # Immediately return the job ID and a status URL
     return jsonify({
         "job_id": job_id,
         "status": "processing",
@@ -110,7 +104,6 @@ def get_job_status(job_id):
     job = jobs.get(job_id)
     if not job:
         return jsonify({"error": "Job not found"}), 404
-
     return jsonify(job)
 
 if __name__ == "__main__":
