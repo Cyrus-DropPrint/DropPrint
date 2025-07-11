@@ -1,59 +1,22 @@
-# Build modern CuraEngine and all its dependencies from source
+# FINAL ATTEMPT: Using a different pre-built image to bypass registry issues
 
+# --- Stage 1: Get the pre-built CuraEngine from a community image ---
+FROM thopiekar/cura-slicer:latest as builder
+
+# --- Stage 2: Build your final application ---
 FROM ubuntu:22.04
 
-# Install system dependencies
+# Install only the runtime dependencies for your Python app
 RUN apt-get update && apt-get install -y \
-    git build-essential cmake libboost-all-dev libeigen3-dev \
-    libprotobuf-dev protobuf-compiler libcurl4-openssl-dev libtbb-dev \
-    python3 python3-pip curl wget unzip \
-    # Install the other new dependencies that ARE available via apt-get
-    librange-v3-dev libspdlog-dev rapidjson-dev && \
+    python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install a recent version of CMake
-RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.tar.gz \
-    | tar --strip-components=1 -xz -C /usr/local
+# Copy the pre-built CuraEngine executable from the first stage
+# The path in this image is /usr/bin/cura-engine
+COPY --from=builder /usr/bin/cura-engine /usr/local/bin/CuraEngine
 
-# --- Build the standardprojectsettings dependency using wget ---
-RUN wget https://github.com/Ultimaker/standardprojectsettings/archive/refs/heads/main.zip -O /tmp/sps.zip && \
-    unzip /tmp/sps.zip -d /tmp && \
-    cd /tmp/standardprojectsettings-main && \
-    mkdir build && cd build && \
-    cmake .. && make install && \
-    rm -rf /tmp/standardprojectsettings-main /tmp/sps.zip
-
-# Part 1: Build the modern libArcus
-RUN git clone https://github.com/Ultimaker/libArcus.git /tmp/libArcus && \
-    cd /tmp/libArcus && git checkout 6.1.0 && \
-    mkdir build && cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=OFF && \
-    make -j$(nproc) && make install && \
-    rm -rf /tmp/libArcus
-
-# Part 2: Build the Clipper2 library from source
-RUN git clone https://github.com/AngusJohnson/Clipper2.git /tmp/Clipper2 && \
-    cd /tmp/Clipper2 && git checkout v1.3.0 && \
-    mkdir build && cd build && \
-    cmake ../C++ -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && make install && \
-    rm -rf /tmp/Clipper2
-
-# Part 3: Build the libnest2d library
-RUN git clone https://github.com/tamasmeszaros/libnest2d.git /tmp/libnest2d && \
-    cd /tmp/libnest2d && git checkout 1.3.0-cura && \
-    mkdir build && cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && make install && \
-    rm -rf /tmp/libnest2d
-
-# Part 4: Build the modern CuraEngine
-RUN git clone --depth 1 --branch 5.7.2 https://github.com/Ultimaker/CuraEngine.git /tmp/CuraEngine && \
-    mkdir /tmp/CuraEngine/build && cd /tmp/CuraEngine/build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && \
-    cp CuraEngine /usr/local/bin/ && chmod +x /usr/local/bin/CuraEngine && \
-    rm -rf /tmp/CuraEngine
+# Make it executable
+RUN chmod +x /usr/local/bin/CuraEngine
 
 # Setup your Flask/Gunicorn app
 WORKDIR /app
