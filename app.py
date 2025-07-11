@@ -2,8 +2,11 @@ import os
 import tempfile
 import subprocess
 import uuid
-import threading
 from flask import Flask, request, jsonify, url_for
+
+# This is the critical import for gevent
+from gevent import monkey, spawn
+monkey.patch_all() # Patches standard libraries to be gevent-friendly
 
 app = Flask(__name__)
 
@@ -11,16 +14,13 @@ app = Flask(__name__)
 jobs = {}
 
 def run_slicing_job(job_id, stl_path, gcode_path):
-    """This function runs in the background"""
+    """This function runs in a gevent greenlet"""
     try:
-        # No longer need to set environment here, we pass it as an argument
         proc_env = os.environ.copy()
+        proc_env["QT_QPA_PLATFORM"] = "offscreen"
 
         command_to_run = [
             "/app/Cura.AppImage",
-            # --- THIS IS THE CRITICAL NEW LINE ---
-            "-platform", "offscreen",
-            # ------------------------------------
             "--",
             "slice",
             "-v",
@@ -87,11 +87,8 @@ def submit_quote_job():
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "processing"}
 
-    thread = threading.Thread(
-        target=run_slicing_job,
-        args=(job_id, stl_path, output_gcode)
-    )
-    thread.start()
+    # Start the slicing job in a background greenlet using gevent.spawn
+    spawn(run_slicing_job, job_id, stl_path, output_gcode)
 
     return jsonify({
         "job_id": job_id,
