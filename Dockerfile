@@ -1,4 +1,4 @@
-# FINAL BUILD: Running the application inside the working Cura image
+# FINAL BUILD: Adding the pip flag for externally managed environments
 
 FROM linuxserver/cura:5.7.1
 
@@ -13,7 +13,8 @@ WORKDIR /app
 
 # Copy your application files
 COPY app.py default_config.json requirements.txt ./
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Install python packages, breaking out of the managed environment
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
 # Expose the port and set a long timeout for Gunicorn
 EXPOSE 10000
