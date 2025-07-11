@@ -17,11 +17,13 @@ def run_slicing_job(job_id, stl_path, gcode_path):
     """This function runs in a gevent greenlet"""
     try:
         proc_env = os.environ.copy()
+        # Keep this line, it's good practice to ensure the environment variable is passed
         proc_env["QT_QPA_PLATFORM"] = "offscreen"
 
+        # *** THIS IS THE CRITICAL CHANGE ***
+        # Point to the extracted CuraEngine binary and remove the "--"
         command_to_run = [
-            "/app/Cura.AppImage",
-            "--",
+            "/usr/local/bin/CuraEngine", # <--- CHANGED PATH
             "slice",
             "-v",
             "-j", "default_config.json",
@@ -105,4 +107,3 @@ def get_job_status(job_id):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-    
