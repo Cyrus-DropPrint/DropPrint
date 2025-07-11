@@ -1,10 +1,10 @@
-# FINAL BUILD: Adding FUSE and OpenGL libraries for AppImage support
+# FINAL BUILD: Adding FUSE, OpenGL, and EGL libraries for AppImage support
 
 FROM ubuntu:22.04
 
-# Install all necessary dependencies, including libfuse2 and libgl1-mesa-glx
+# Install all necessary dependencies
 RUN apt-get update && apt-get install -y \
-    wget python3 python3-pip libfuse2 libgl1-mesa-glx && \
+    wget python3 python3-pip libfuse2 libgl1-mesa-glx libegl1-mesa && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
