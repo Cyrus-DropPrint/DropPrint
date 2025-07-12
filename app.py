@@ -5,8 +5,8 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# This is the correct, absolute path inside the linuxserver/cura image
-CURAENGINE_PATH = "/opt/cura/CuraEngine"
+# This is the standard path for a package installed with apt-get
+CURAENGINE_PATH = "/usr/bin/cura-engine"
 PRINTER_PROFILE = "default_config.json"
 
 @app.route("/quote", methods=["POST"])
@@ -47,17 +47,18 @@ def get_quote():
         print_time = None
         filament = None
         for line in proc.stdout.splitlines():
-            if "Print time (s):" in line:
+            if ";TIME:" in line:
                 print_time = float(line.split(":")[1].strip())
-            if "Filament (mm^3):" in line:
-                filament = float(line.split(":")[1].strip())
+            if ";Filament used:" in line:
+                filament_str = line.split(":")[1].strip().split("m")[0]
+                filament = float(filament_str) * 1000 # Convert m to mm
 
         if print_time is None or filament is None:
-            return jsonify({"error": "Failed to parse CuraEngine output"}), 500
+            return jsonify({"error": "Failed to parse CuraEngine output", "raw_output": proc.stdout}), 500
 
         return jsonify({
             "print_time_seconds": print_time,
-            "filament_mm3": filament
+            "filament_mm": filament 
         })
 
     except subprocess.TimeoutExpired:
