@@ -1,4 +1,4 @@
-# FINAL BUILD: Using PrusaSlicer AppImage
+# FINAL BUILD: Using the user-verified PrusaSlicer AppImage URL
 
 FROM ubuntu:22.04
 
@@ -13,8 +13,9 @@ RUN apt-get update && apt-get install -y \
 # Set the working directory
 WORKDIR /app
 
-# Download the official PrusaSlicer AppImage and make it executable
-RUN wget https://github.com/prusa3d/PrusaSlicer/releases/download/version_2.7.4/PrusaSlicer-2.7.4+linux-x64-GTK3-202404051613.AppImage -O PrusaSlicer.AppImage && \
+# --- THIS IS THE CORRECTED LINE USING YOUR LINK ---
+# Download the official PrusaSlicer AppImage
+RUN wget "https://github.com/prusa3d/PrusaSlicer/releases/download/version_2.8.1/PrusaSlicer-2.8.1+linux-x64-older-distros-GTK3-202409181354.AppImage" -O PrusaSlicer.AppImage && \
     chmod +x PrusaSlicer.AppImage
 
 # Copy your application files
