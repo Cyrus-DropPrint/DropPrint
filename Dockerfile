@@ -1,26 +1,31 @@
-# FINAL BUILD: Running the application inside the working Cura image
+# FINAL BUILD: Adding WebKit library for PrusaSlicer
 
-FROM linuxserver/cura:5.7.1
+FROM ubuntu:22.04
 
-# The linuxserver images are based on Ubuntu.
-# Install Python and Pip.
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip && \
+# Install all necessary dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    libfuse2 \
+    libgl1-mesa-glx \
+    libglu1-mesa \
+    libgtk-3-0 \
+    libegl1-mesa \
+    libwebkit2gtk-4.0-37 \
+    python3 \
+    python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Set up the application directory
+# Set the working directory
 WORKDIR /app
 
-# --- THIS IS THE CORRECTED LINE ---
-# Copy ALL your application files, including the new worker and Procfile
-COPY app.py celery_worker.py Procfile prusa_config.ini requirements.txt ./
+# Download the verified PrusaSlicer AppImage
+RUN wget "https://github.com/prusa3d/PrusaSlicer/releases/download/version_2.8.1/PrusaSlicer-2.8.1+linux-x64-older-distros-GTK3-202409181354.AppImage" -O PrusaSlicer.AppImage && \
+    chmod +x PrusaSlicer.AppImage
 
-# Install Python packages
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+# Copy your application files
+COPY app.py prusa_config.ini requirements.txt ./
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Expose the port
+# Expose the port and set a long timeout for Gunicorn
 EXPOSE 10000
-
-# The Procfile will be used by Koyeb to start the web and worker processes,
-# so the CMD is not strictly necessary but is good practice.
 CMD ["gunicorn", "--timeout", "300", "--bind", "0.0.0.0:10000", "app:app"]
