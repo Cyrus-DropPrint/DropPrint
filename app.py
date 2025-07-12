@@ -5,9 +5,9 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# This is the standard path for a package installed with apt-get
-CURAENGINE_PATH = "/usr/bin/cura-engine"
-PRINTER_PROFILE = "default_config.json"
+# --- Configuration ---
+PRUSASLICER_PATH = "./PrusaSlicer.AppImage"
+PRINTER_PROFILE = "prusa_config.ini" # A simple config file for PrusaSlicer
 
 @app.route("/quote", methods=["POST"])
 def get_quote():
@@ -18,47 +18,64 @@ def get_quote():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
+    # Save the uploaded file temporarily
     with tempfile.NamedTemporaryFile(delete=False, suffix=".stl") as tmp_stl:
         file.save(tmp_stl.name)
         stl_path = tmp_stl.name
 
-    output_gcode = tempfile.NamedTemporaryFile(delete=False, suffix=".gcode").name
+    output_gcode_path = tempfile.NamedTemporaryFile(delete=False, suffix=".gcode").name
 
     try:
-        command_to_run = [
-            CURAENGINE_PATH,
-            "slice",
-            "-v",
-            "-j", PRINTER_PROFILE,
-            "-l", stl_path,
-            "-o", output_gcode
+        # Construct the command for prusa-slicer-console
+        command = [
+            PRUSASLICER_PATH,
+            "--export-gcode",
+            "--load", PRINTER_PROFILE,
+            "-o", output_gcode_path,
+            stl_path
         ]
-        
+
+        # Run the PrusaSlicer AppImage
+        # The AppImage will automatically call the console version
         proc = subprocess.run(
-            command_to_run,
+            command,
             capture_output=True,
             text=True,
-            timeout=290  # Timeout slightly less than Gunicorn's
+            timeout=290
         )
 
         if proc.returncode != 0:
-            return jsonify({"error": "CuraEngine failed", "details": proc.stderr}), 500
-
-        print_time = None
-        filament = None
-        for line in proc.stdout.splitlines():
-            if ";TIME:" in line:
-                print_time = float(line.split(":")[1].strip())
-            if ";Filament used:" in line:
-                filament_str = line.split(":")[1].strip().split("m")[0]
-                filament = float(filament_str) * 1000 # Convert m to mm
-
-        if print_time is None or filament is None:
-            return jsonify({"error": "Failed to parse CuraEngine output", "raw_output": proc.stdout}), 500
+            return jsonify({"error": "PrusaSlicer failed", "details": proc.stderr}), 500
+        
+        # PrusaSlicer prints estimated time to stderr, so we parse that
+        print_time_seconds = 0
+        lines = proc.stderr.splitlines()
+        for line in lines:
+            if "Estimated printing time (normal mode)" in line:
+                time_str = line.split("= ")[1]
+                days, hours, minutes, seconds = 0, 0, 0, 0
+                if "d" in time_str:
+                    days = int(time_str.split("d")[0])
+                    time_str = time_str.split("d")[1].strip()
+                if "h" in time_str:
+                    hours = int(time_str.split("h")[0])
+                    time_str = time_str.split("h")[1].strip()
+                if "m" in time_str:
+                    minutes = int(time_str.split("m")[0])
+                    time_str = time_str.split("m")[1].strip()
+                if "s" in time_str:
+                    seconds = int(time_str.split("s")[0])
+                
+                print_time_seconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds
+                break
+        
+        if print_time_seconds == 0:
+            return jsonify({"error": "Failed to parse print time from PrusaSlicer output", "details": proc.stderr}), 500
 
         return jsonify({
-            "print_time_seconds": print_time,
-            "filament_mm": filament 
+            "print_time_seconds": print_time_seconds
+            # Note: PrusaSlicer console doesn't easily output filament usage by default.
+            # This would require more complex config and parsing.
         })
 
     except subprocess.TimeoutExpired:
@@ -66,9 +83,10 @@ def get_quote():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
+        # Clean up the temporary files
         try:
             os.remove(stl_path)
-            os.remove(output_gcode)
+            os.remove(output_gcode_path)
         except OSError:
             pass
 
