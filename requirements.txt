@@ -1,7 +1,6 @@
 flask
 gunicorn
-gevent
-Flask-SQLAlchemy
-psycopg2-binary
 celery
-redis
+# We no longer need the 'redis' library
+# Add the library for RabbitMQ
+amqp
