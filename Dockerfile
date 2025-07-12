@@ -1,8 +1,8 @@
-# FINAL BUILD: Adding WebKit library for PrusaSlicer
-
+# Start with a standard Ubuntu image, as it's great for handling the required libraries.
 FROM ubuntu:22.04
 
-# Install all necessary dependencies
+# Install system-level dependencies for Python and PrusaSlicer AppImage
+# This includes Python itself and all the graphics/UI libraries PrusaSlicer needs to run.
 RUN apt-get update && apt-get install -y \
     wget \
     libfuse2 \
@@ -15,17 +15,25 @@ RUN apt-get update && apt-get install -y \
     python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Download the verified PrusaSlicer AppImage
+# Copy just the requirements file first to leverage Docker's layer caching
+COPY requirements.txt .
+
+# Install the Python packages specified in your requirements file
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Copy the rest of your application files into the container
+# This includes app.py, prusa_config.ini, etc.
+COPY . .
+
+# Download the specific PrusaSlicer AppImage you were using and make it executable
+# This ensures the correct version is always available for your app.
 RUN wget "https://github.com/prusa3d/PrusaSlicer/releases/download/version_2.8.1/PrusaSlicer-2.8.1+linux-x64-older-distros-GTK3-202409181354.AppImage" -O PrusaSlicer.AppImage && \
     chmod +x PrusaSlicer.AppImage
 
-# Copy your application files
-COPY app.py models.py prusa_config.ini requirements.txt ./
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-# Expose the port and set a long timeout for Gunicorn
-EXPOSE 10000
-CMD ["gunicorn", "--timeout", "300", "--bind", "0.0.0.0:10000", "app:app"]
+# Set the command to run your Flask application using Python's built-in module.
+# This is the corrected startup command that does not use Gunicorn.
+# It tells Koyeb to run the 'app' object inside your 'app.py' file.
+CMD ["python3", "-m", "flask", "run", "--host=0.0.0.0", "--port=8080"]
