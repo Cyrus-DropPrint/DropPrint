@@ -1,11 +1,12 @@
-# FINAL BUILD: Using the user-verified PrusaSlicer AppImage URL
+# FINAL BUILD: Adding graphics library for PrusaSlicer AppImage
 
 FROM ubuntu:22.04
 
-# Install dependencies needed for AppImage and Python
+# Install all necessary dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     libfuse2 \
+    libgl1-mesa-glx \
     python3 \
     python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -13,8 +14,7 @@ RUN apt-get update && apt-get install -y \
 # Set the working directory
 WORKDIR /app
 
-# --- THIS IS THE CORRECTED LINE USING YOUR LINK ---
-# Download the official PrusaSlicer AppImage
+# Download the verified PrusaSlicer AppImage
 RUN wget "https://github.com/prusa3d/PrusaSlicer/releases/download/version_2.8.1/PrusaSlicer-2.8.1+linux-x64-older-distros-GTK3-202409181354.AppImage" -O PrusaSlicer.AppImage && \
     chmod +x PrusaSlicer.AppImage
 
