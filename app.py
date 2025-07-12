@@ -1,95 +1,99 @@
 import os
+import tempfile
 import subprocess
-import uuid
 from flask import Flask, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+from models import Base, SlicingJob  # your model file
+
+DATABASE_URL = "sqlite:///slicing_jobs.db"
+engine = create_engine(DATABASE_URL)
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+db_session = Session()
 
 app = Flask(__name__)
 
+# --- Config ---
+PRUSASLICER_PATH = "./PrusaSlicer.AppImage"
+PRINTER_PROFILE = "prusa_config.ini"
+
 UPLOAD_FOLDER = 'static/uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'stl'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# === Upload endpoint ===
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
-
+        return jsonify({"error": "No file provided"}), 400
     file = request.files['file']
     if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
-
+        return jsonify({"error": "Empty filename"}), 400
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        unique_filename = f"{uuid.uuid4().hex}_{filename}"
-        file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
-        file.save(file_path)
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(save_path)
+        public_url = f"https://overseas-gwenette-3dmodelslicer-6c28fb6a.koyeb.app/static/uploads/{filename}"
+        return jsonify({"url": public_url})
+    else:
+        return jsonify({"error": "Invalid file type"}), 400
 
-        public_url = f"https://YOUR-SUBDOMAIN.koyeb.app/static/uploads/{unique_filename}"
-        return jsonify({'url': public_url}), 200
-
-    return jsonify({'error': 'Invalid file type'}), 400
-
+# === Serve uploaded files ===
 @app.route('/static/uploads/<path:filename>')
-def serve_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-@app.route('/slice', methods=['POST'])
-def slice_file():
-    data = request.get_json()
-    stl_url = data.get('stl_url')
-    print_settings = data.get('print_settings', {})  # optional, not required for now
+# === Slicing endpoint ===
+@app.route("/quote", methods=["POST"])
+def get_quote():
+    if "file" not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
 
-    if not stl_url or not stl_url.endswith('.stl'):
-        return jsonify({'error': 'Invalid STL URL'}), 400
+    # Save uploaded STL temporarily
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".stl") as tmp_stl:
+        file.save(tmp_stl.name)
+        stl_path = tmp_stl.name
+
+    output_gcode_path = tempfile.NamedTemporaryFile(delete=False, suffix=".gcode").name
+
+    # Create DB job
+    new_job = SlicingJob(filename=file.filename, status="processing")
+    db_session.add(new_job)
+    db_session.commit()
+    job_id = new_job.id
 
     try:
-        filename = os.path.basename(stl_url)
-        local_path = os.path.join(UPLOAD_FOLDER, filename)
-
-        # Download STL file if not already present
-        if not os.path.exists(local_path):
-            subprocess.run(["wget", stl_url, "-O", local_path], check=True)
-
-        # Run PrusaSlicer and output G-code
-        gcode_path = os.path.join(UPLOAD_FOLDER, filename.replace('.stl', '.gcode'))
         command = [
-            "./PrusaSlicer.AppImage",
+            PRUSASLICER_PATH,
             "--export-gcode",
-            "--load", "prusa_config.ini",
-            "--output", gcode_path,
-            local_path
+            "--load", PRINTER_PROFILE,
+            "-o", output_gcode_path,
+            stl_path
         ]
-        subprocess.run(command, check=True)
+        proc = subprocess.run(command, capture_output=True, text=True, timeout=290)
+        if proc.returncode != 0:
+            new_job.status = "error"
+            db_session.commit()
+            return jsonify({"error": "PrusaSlicer failed", "details": proc.stderr}), 500
 
-        # Analyze G-code
-        analysis = subprocess.run(
-            ["./PrusaSlicer.AppImage", "--info", gcode_path],
-            capture_output=True, text=True, check=True
-        )
+        print_time_seconds = None
+        filament_length_mm = None
 
-        info = {}
-        for line in analysis.stdout.splitlines():
-            if ":" in line:
-                key, val = line.split(":", 1)
-                info[key.strip()] = val.strip()
-
-        return jsonify({
-            "filament_used_mm": float(info.get("Filament used [mm]", 0)),
-            "filament_used_g": float(info.get("Filament used [g]", 0)),
-            "print_time_sec": int(info.get("Estimated printing time (normal mode)", "0").split()[0]),
-            "estimated_cost_usd": round(float(info.get("Filament cost", "0").replace("$", "")), 2)
-        }), 200
-
-    except subprocess.CalledProcessError as e:
-        return jsonify({'error': 'Slicing failed', 'details': e.stderr}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=10000)
+        with open(output_gcode_path, 'r') as gcode_file:
+            for line in gcode_file:
+                if "estimated printing time (normal mode)" in line:
+                    time_str = line.split("= ")[1]
+                    days, hours, minutes, seconds = 0, 0, 0, 0
+                    if "d" in t
 
 
