@@ -23,7 +23,7 @@ RUN wget "https://github.com/prusa3d/PrusaSlicer/releases/download/version_2.8.1
     chmod +x PrusaSlicer.AppImage
 
 # Copy your application files
-COPY app.py prusa_config.ini requirements.txt ./
+COPY app.py models.py prusa_config.ini requirements.txt ./
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Expose the port and set a long timeout for Gunicorn
