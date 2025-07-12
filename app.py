@@ -14,12 +14,11 @@ def submit_quote_job():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
-    # We must save the file to a location the worker can access.
-    # A shared volume is best, but for now we'll save it in the app directory.
+    # Save the file to a temporary location that the worker can access.
+    # Note: For production, a shared file store like AWS S3 is better.
     job_id = str(uuid.uuid4())
     stl_filename = f"{job_id}.stl"
-    stl_path = os.path.join("/app/tmp", stl_filename)
-    os.makedirs(os.path.dirname(stl_path), exist_ok=True)
+    stl_path = os.path.join(tempfile.gettempdir(), stl_filename)
     file.save(stl_path)
 
     # Send the slicing task to the background Celery worker
@@ -33,14 +32,13 @@ def submit_quote_job():
 
 @app.route("/status/<job_id>", methods=["GET"])
 def get_job_status(job_id):
-    # Check the status of the job
+    # Check the status of the job from Celery's backend
     task = run_slicing_job_task.AsyncResult(job_id)
     
     response = {
         "job_id": job_id,
         "status": task.state
     }
-
     if task.state == 'SUCCESS':
         response['result'] = task.result
     elif task.state == 'FAILURE':
