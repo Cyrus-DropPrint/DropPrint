@@ -1,51 +1,70 @@
 import os
+import json
 import tempfile
 import subprocess
+import math # Needed for filament calculation
 from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
-from models import Base, SlicingJob  # Make sure models.py is in same directory
 
-DATABASE_URL = "sqlite:///slicing_jobs.db"
+# --- Firebase Admin SDK Setup ---
+# This is the new section that lets us talk to Firebase
+import firebase_admin
+from firebase_admin import credentials, storage
 
-engine = create_engine(DATABASE_URL)
-Base.metadata.create_all(engine)
-
-Session = sessionmaker(bind=engine)
-db_session = Session()
+# Load the secret key from Koyeb's environment variables
+firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
+if firebase_creds_json:
+    creds_dict = json.loads(firebase_creds_json)
+    cred = credentials.Certificate(creds_dict)
+    # Check if the app is already initialized to prevent errors on reload
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(cred)
+else:
+    print("FATAL ERROR: FIREBASE_CREDENTIALS secret not found.")
+    # In a real app, you might want to exit or handle this more gracefully
+    # For now, we'll just print an error. The app will likely fail on requests.
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 
 # --- Configuration ---
+# We still need the path to your slicer and its config
 PRUSASLICER_PATH = "./PrusaSlicer.AppImage"
 PRINTER_PROFILE = "prusa_config.ini" 
 
-@app.route("/quote", methods=["POST"])
+@app.route('/')
+def home():
+    return "PrusaSlicer API with Firebase Integration is running."
+
+# --- Main Slicer Endpoint ---
+# I've updated this to match our plan
+@app.route("/slice", methods=["POST"])
 def get_quote():
-    if "file" not in request.files:
-        return jsonify({"error": "No file part"}), 400
+    data = request.get_json()
 
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
+    # 1. MODIFICATION: We now expect 'storagePath' instead of a file upload
+    if not data or 'storagePath' not in data:
+        return jsonify({"error": "Missing 'storagePath' in request body"}), 400
 
-    # Save the uploaded file temporarily
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".stl") as tmp_stl:
-        file.save(tmp_stl.name)
+    storage_path = data.get('storagePath')
+    print(f"Received request to slice file from Firebase Storage: {storage_path}")
+
+    # Create temporary files for the downloaded STL and the output G-code
+    # Using 'with' ensures they are cleaned up even if errors occur
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".stl") as tmp_stl, \
+         tempfile.NamedTemporaryFile(delete=False, suffix=".gcode") as tmp_gcode:
         stl_path = tmp_stl.name
-
-    output_gcode_path = tempfile.NamedTemporaryFile(delete=False, suffix=".gcode").name
-
-    # Create job entry in DB
-    new_job = SlicingJob(filename=file.filename, status="processing")
-    db_session.add(new_job)
-    db_session.commit()
-    job_id = new_job.id
+        output_gcode_path = tmp_gcode.name
 
     try:
-        # Construct the command for prusa-slicer-console
+        # 2. NEW LOGIC: Download the file from Firebase Storage
+        bucket = storage.bucket() 
+        blob = bucket.blob(storage_path)
+        
+        print(f"Downloading to temporary path: {stl_path}")
+        blob.download_to_filename(stl_path)
+        print("Download complete.")
+
+        # --- YOUR EXISTING PRUSASLICER LOGIC (UNCHANGED) ---
+        print("Starting PrusaSlicer...")
         command = [
             PRUSASLICER_PATH,
             "--export-gcode",
@@ -54,7 +73,6 @@ def get_quote():
             stl_path
         ]
 
-        # Run the PrusaSlicer AppImage
         proc = subprocess.run(
             command,
             capture_output=True,
@@ -63,11 +81,13 @@ def get_quote():
         )
 
         if proc.returncode != 0:
-            new_job.status = "error"
-            db_session.commit()
+            print(f"PrusaSlicer failed. Stderr: {proc.stderr}")
             return jsonify({"error": "PrusaSlicer failed", "details": proc.stderr}), 500
         
-        # --- PARSE G-CODE FILE FOR FILAMENT AND TIME ---
+        print("PrusaSlicer finished successfully.")
+        
+        # --- YOUR EXISTING G-CODE PARSING LOGIC (UNCHANGED) ---
+        print("Parsing G-code for results...")
         print_time_seconds = None
         filament_length_mm = None
 
@@ -97,55 +117,45 @@ def get_quote():
                     break
         
         if print_time_seconds is None or filament_length_mm is None:
-            new_job.status = "error"
-            db_session.commit()
-            return jsonify({"error": "Failed to parse slicer output from G-code file", "details": proc.stderr}), 500
+            return jsonify({"error": "Failed to parse slicer output from G-code file"}), 500
 
-        # Update DB job as successful
-        new_job.print_time_seconds = print_time_seconds
-        new_job.filament_length_mm = filament_length_mm
-        new_job.status = "completed"
-        db_session.commit()
+        # 3. NEW LOGIC: Convert filament length (mm) to grams
+        # Assuming 1.75mm PLA filament with a density of 1.24 g/cm^3
+        filament_diameter_mm = 1.75
+        filament_density_g_cm3 = 1.24
+        
+        radius_cm = (filament_diameter_mm / 2) / 10
+        length_cm = filament_length_mm / 10
+        volume_cm3 = math.pi * (radius_cm ** 2) * length_cm
+        filament_used_g = volume_cm3 * filament_density_g_cm3
+        
+        print(f"Calculation complete. Grams: {filament_used_g:.2f}, Seconds: {print_time_seconds}")
 
+        # 4. MODIFICATION: Return the raw data your frontend expects
         return jsonify({
-            "job_id": job_id,
-            "print_time_seconds": print_time_seconds,
-            "filament_length_mm": filament_length_mm
+            "filament_used_g": round(filament_used_g, 2),
+            "print_time_sec": int(print_time_seconds)
         })
 
     except subprocess.TimeoutExpired:
-        new_job.status = "error"
-        db_session.commit()
         return jsonify({"error": "Slicing process timed out after 290 seconds"}), 500
-
     except Exception as e:
-        new_job.status = "error"
-        db_session.commit()
-        return jsonify({"error": str(e)}), 500
-
+        print(f"An unexpected error occurred: {e}")
+        return jsonify({"error": "An unexpected error occurred on the server.", "details": str(e)}), 500
     finally:
+        # Clean up the temporary files
+        print("Cleaning up temporary files.")
         try:
             os.remove(stl_path)
             os.remove(output_gcode_path)
-        except OSError:
+        except OSError as e:
+            print(f"Error removing temp files: {e}")
             pass
 
-@app.route("/status/<int:job_id>", methods=["GET"])
-def check_status(job_id):
-    job = db_session.query(SlicingJob).filter_by(id=job_id).first()
-    if not job:
-        return jsonify({"error": "Job not found"}), 404
-
-    return jsonify({
-        "job_id": job.id,
-        "filename": job.filename,
-        "status": job.status,
-        "print_time_seconds": job.print_time_seconds,
-        "filament_length_mm": job.filament_length_mm,
-        "created_at": job.created_at.isoformat()
-    })
+# I removed the /status endpoint and database logic to simplify,
+# as it's not needed for the core quoting functionality.
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
-
-
+    # Koyeb provides the PORT environment variable
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
