@@ -1,3 +1,7 @@
 flask
 gunicorn
 gevent
+Flask-SQLAlchemy
+psycopg2-binary
+celery
+redis
