@@ -1,4 +1,4 @@
-flask
-gunicorn
-sqlalchemy
-flask_sqlalchemy
+Flask
+SQLAlchemy
+Flask-SQLAlchemy
+firebase-admin
