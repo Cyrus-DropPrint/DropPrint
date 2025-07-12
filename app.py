@@ -2,26 +2,9 @@ import os
 import tempfile
 import uuid
 from flask import Flask, request, jsonify, url_for
-from flask_sqlalchemy import SQLAlchemy
 from celery_worker import run_slicing_job_task
 
 app = Flask(__name__)
-
-# --- Database Configuration ---
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db = SQLAlchemy(app)
-
-# --- Database Model ---
-class Job(db.Model):
-    id = db.Column(db.String(36), primary_key=True)
-    status = db.Column(db.String(20), nullable=False, default="processing")
-    print_time = db.Column(db.Float, nullable=True)
-    filament_mm = db.Column(db.Float, nullable=True)
-    error_message = db.Column(db.Text, nullable=True)
-
-with app.app_context():
-    db.create_all()
 
 @app.route("/quote", methods=["POST"])
 def submit_quote_job():
@@ -31,16 +14,13 @@ def submit_quote_job():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".stl") as tmp_stl:
-        file.save(tmp_stl.name)
-        stl_path = tmp_stl.name
-    
+    # We must save the file to a location the worker can access.
+    # A shared volume is best, but for now we'll save it in the app directory.
     job_id = str(uuid.uuid4())
-    
-    # Create and save the new job in the database
-    new_job = Job(id=job_id, status="queued")
-    db.session.add(new_job)
-    db.session.commit()
+    stl_filename = f"{job_id}.stl"
+    stl_path = os.path.join("/app/tmp", stl_filename)
+    os.makedirs(os.path.dirname(stl_path), exist_ok=True)
+    file.save(stl_path)
 
     # Send the slicing task to the background Celery worker
     run_slicing_job_task.delay(job_id, stl_path)
@@ -53,19 +33,19 @@ def submit_quote_job():
 
 @app.route("/status/<job_id>", methods=["GET"])
 def get_job_status(job_id):
-    job = db.session.get(Job, job_id)
-    if not job:
-        return jsonify({"error": "Job not found"}), 404
+    # Check the status of the job
+    task = run_slicing_job_task.AsyncResult(job_id)
     
-    response = {"job_id": job.id, "status": job.status}
-    if job.status == "completed":
-        response["result"] = {
-            "print_time_seconds": job.print_time,
-            "filament_length_mm": job.filament_mm
-        }
-    elif job.status == "failed":
-        response["error"] = job.error_message
-        
+    response = {
+        "job_id": job_id,
+        "status": task.state
+    }
+
+    if task.state == 'SUCCESS':
+        response['result'] = task.result
+    elif task.state == 'FAILURE':
+        response['error'] = str(task.info)
+
     return jsonify(response)
 
 if __name__ == "__main__":
