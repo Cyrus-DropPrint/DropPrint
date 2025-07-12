@@ -1,12 +1,13 @@
-# FINAL BUILD: Adding graphics library for PrusaSlicer AppImage
+# FINAL BUILD: Adding GLU library for PrusaSlicer
 
 FROM ubuntu:22.04
 
-# Install all necessary dependencies
+# Install all necessary dependencies, now including libglu1-mesa
 RUN apt-get update && apt-get install -y \
     wget \
     libfuse2 \
     libgl1-mesa-glx \
+    libglu1-mesa \
     python3 \
     python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
