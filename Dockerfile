@@ -1,4 +1,4 @@
-# FINAL BUILD: Adding EGL library for PrusaSlicer
+# FINAL BUILD: Adding WebKit library for PrusaSlicer
 
 FROM ubuntu:22.04
 
@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libglu1-mesa \
     libgtk-3-0 \
     libegl1-mesa \
+    libwebkit2gtk-4.0-37 \
     python3 \
     python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
