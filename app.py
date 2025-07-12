@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # --- Configuration ---
 PRUSASLICER_PATH = "./PrusaSlicer.AppImage"
-PRINTER_PROFILE = "prusa_config.ini" # A simple config file for PrusaSlicer
+PRINTER_PROFILE = "prusa_config.ini" 
 
 @app.route("/quote", methods=["POST"])
 def get_quote():
@@ -36,7 +36,6 @@ def get_quote():
         ]
 
         # Run the PrusaSlicer AppImage
-        # The AppImage will automatically call the console version
         proc = subprocess.run(
             command,
             capture_output=True,
@@ -47,35 +46,44 @@ def get_quote():
         if proc.returncode != 0:
             return jsonify({"error": "PrusaSlicer failed", "details": proc.stderr}), 500
         
-        # PrusaSlicer prints estimated time to stderr, so we parse that
-        print_time_seconds = 0
-        lines = proc.stderr.splitlines()
-        for line in lines:
-            if "Estimated printing time (normal mode)" in line:
-                time_str = line.split("= ")[1]
-                days, hours, minutes, seconds = 0, 0, 0, 0
-                if "d" in time_str:
-                    days = int(time_str.split("d")[0])
-                    time_str = time_str.split("d")[1].strip()
-                if "h" in time_str:
-                    hours = int(time_str.split("h")[0])
-                    time_str = time_str.split("h")[1].strip()
-                if "m" in time_str:
-                    minutes = int(time_str.split("m")[0])
-                    time_str = time_str.split("m")[1].strip()
-                if "s" in time_str:
-                    seconds = int(time_str.split("s")[0])
+        # --- PARSE G-CODE FILE FOR FILAMENT AND TIME ---
+        print_time_seconds = None
+        filament_length_mm = None
+
+        with open(output_gcode_path, 'r') as gcode_file:
+            for line in gcode_file:
+                if "estimated printing time (normal mode)" in line:
+                    # Format is "; estimated printing time (normal mode) = 1d 2h 3m 4s"
+                    time_str = line.split("= ")[1]
+                    days, hours, minutes, seconds = 0, 0, 0, 0
+                    if "d" in time_str:
+                        days = int(time_str.split("d")[0])
+                        time_str = time_str.split("d")[1].strip()
+                    if "h" in time_str:
+                        hours = int(time_str.split("h")[0])
+                        time_str = time_str.split("h")[1].strip()
+                    if "m" in time_str:
+                        minutes = int(time_str.split("m")[0])
+                        time_str = time_str.split("m")[1].strip()
+                    if "s" in time_str:
+                        seconds = int(time_str.split("s")[0])
+                    
+                    print_time_seconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds
                 
-                print_time_seconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds
-                break
+                if "; filament used [mm] =" in line:
+                    # Format is "; filament used [mm] = 1234.56"
+                    filament_length_mm = float(line.split("= ")[1])
+                
+                # Stop reading if we have both values
+                if print_time_seconds is not None and filament_length_mm is not None:
+                    break
         
-        if print_time_seconds == 0:
-            return jsonify({"error": "Failed to parse print time from PrusaSlicer output", "details": proc.stderr}), 500
+        if print_time_seconds is None or filament_length_mm is None:
+            return jsonify({"error": "Failed to parse slicer output from G-code file", "details": proc.stderr}), 500
 
         return jsonify({
-            "print_time_seconds": print_time_seconds
-            # Note: PrusaSlicer console doesn't easily output filament usage by default.
-            # This would require more complex config and parsing.
+            "print_time_seconds": print_time_seconds,
+            "filament_length_mm": filament_length_mm
         })
 
     except subprocess.TimeoutExpired:
