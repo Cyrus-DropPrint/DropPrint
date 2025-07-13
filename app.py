@@ -6,7 +6,6 @@ import math # Needed for filament calculation
 from flask import Flask, request, jsonify
 
 # --- Firebase Admin SDK Setup ---
-# This is the new section that lets us talk to Firebase
 import firebase_admin
 from firebase_admin import credentials, storage
 
@@ -17,16 +16,16 @@ if firebase_creds_json:
     cred = credentials.Certificate(creds_dict)
     # Check if the app is already initialized to prevent errors on reload
     if not firebase_admin._apps:
-        firebase_admin.initialize_app(cred)
+        # --- MODIFICATION: Specify the bucket name during initialization ---
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': 'dropprint-31d26.appspot.com'
+        })
 else:
     print("FATAL ERROR: FIREBASE_CREDENTIALS secret not found.")
-    # In a real app, you might want to exit or handle this more gracefully
-    # For now, we'll just print an error. The app will likely fail on requests.
 
 app = Flask(__name__)
 
 # --- Configuration ---
-# We still need the path to your slicer and its config
 PRUSASLICER_PATH = "./PrusaSlicer.AppImage"
 PRINTER_PROFILE = "prusa_config.ini" 
 
@@ -34,28 +33,23 @@ PRINTER_PROFILE = "prusa_config.ini"
 def home():
     return "PrusaSlicer API with Firebase Integration is running."
 
-# --- Main Slicer Endpoint ---
-# I've updated this to match our plan
 @app.route("/slice", methods=["POST"])
 def get_quote():
     data = request.get_json()
 
-    # 1. MODIFICATION: We now expect 'storagePath' instead of a file upload
     if not data or 'storagePath' not in data:
         return jsonify({"error": "Missing 'storagePath' in request body"}), 400
 
     storage_path = data.get('storagePath')
     print(f"Received request to slice file from Firebase Storage: {storage_path}")
 
-    # Create temporary files for the downloaded STL and the output G-code
-    # Using 'with' ensures they are cleaned up even if errors occur
     with tempfile.NamedTemporaryFile(delete=False, suffix=".stl") as tmp_stl, \
          tempfile.NamedTemporaryFile(delete=False, suffix=".gcode") as tmp_gcode:
         stl_path = tmp_stl.name
         output_gcode_path = tmp_gcode.name
 
     try:
-        # 2. NEW LOGIC: Download the file from Firebase Storage
+        # Get the bucket. It now knows the name from the initialization step.
         bucket = storage.bucket() 
         blob = bucket.blob(storage_path)
         
@@ -63,7 +57,6 @@ def get_quote():
         blob.download_to_filename(stl_path)
         print("Download complete.")
 
-        # --- YOUR EXISTING PRUSASLICER LOGIC (UNCHANGED) ---
         print("Starting PrusaSlicer...")
         command = [
             PRUSASLICER_PATH,
@@ -84,10 +77,8 @@ def get_quote():
             print(f"PrusaSlicer failed. Stderr: {proc.stderr}")
             return jsonify({"error": "PrusaSlicer failed", "details": proc.stderr}), 500
         
-        print("PrusaSlicer finished successfully.")
+        print("PrusaSlicer finished successfully. Parsing G-code...")
         
-        # --- YOUR EXISTING G-CODE PARSING LOGIC (UNCHANGED) ---
-        print("Parsing G-code for results...")
         print_time_seconds = None
         filament_length_mm = None
 
@@ -107,7 +98,6 @@ def get_quote():
                         time_str = time_str.split("m")[1].strip()
                     if "s" in time_str:
                         seconds = int(time_str.split("s")[0])
-                    
                     print_time_seconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds
                 
                 if "; filament used [mm] =" in line:
@@ -119,11 +109,8 @@ def get_quote():
         if print_time_seconds is None or filament_length_mm is None:
             return jsonify({"error": "Failed to parse slicer output from G-code file"}), 500
 
-        # 3. NEW LOGIC: Convert filament length (mm) to grams
-        # Assuming 1.75mm PLA filament with a density of 1.24 g/cm^3
         filament_diameter_mm = 1.75
         filament_density_g_cm3 = 1.24
-        
         radius_cm = (filament_diameter_mm / 2) / 10
         length_cm = filament_length_mm / 10
         volume_cm3 = math.pi * (radius_cm ** 2) * length_cm
@@ -131,7 +118,6 @@ def get_quote():
         
         print(f"Calculation complete. Grams: {filament_used_g:.2f}, Seconds: {print_time_seconds}")
 
-        # 4. MODIFICATION: Return the raw data your frontend expects
         return jsonify({
             "filament_used_g": round(filament_used_g, 2),
             "print_time_sec": int(print_time_seconds)
@@ -143,7 +129,6 @@ def get_quote():
         print(f"An unexpected error occurred: {e}")
         return jsonify({"error": "An unexpected error occurred on the server.", "details": str(e)}), 500
     finally:
-        # Clean up the temporary files
         print("Cleaning up temporary files.")
         try:
             os.remove(stl_path)
@@ -152,10 +137,6 @@ def get_quote():
             print(f"Error removing temp files: {e}")
             pass
 
-# I removed the /status endpoint and database logic to simplify,
-# as it's not needed for the core quoting functionality.
-
 if __name__ == "__main__":
-    # Koyeb provides the PORT environment variable
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
