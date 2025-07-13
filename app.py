@@ -16,9 +16,9 @@ if firebase_creds_json:
     cred = credentials.Certificate(creds_dict)
     # Check if the app is already initialized to prevent errors on reload
     if not firebase_admin._apps:
-        # --- MODIFICATION: Specify the bucket name during initialization ---
+        # --- MODIFICATION: Using the correct bucket name for your project ---
         firebase_admin.initialize_app(cred, {
-            'storageBucket': 'dropprint-31d26.appspot.com'
+            'storageBucket': 'dropprint-31d26.firebasestorage.app'
         })
 else:
     print("FATAL ERROR: FIREBASE_CREDENTIALS secret not found.")
@@ -140,3 +140,4 @@ def get_quote():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
