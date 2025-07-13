@@ -33,10 +33,9 @@ COPY . .
 RUN wget "https://github.com/prusa3d/PrusaSlicer/releases/download/version_2.8.1/PrusaSlicer-2.8.1+linux-x64-older-distros-GTK3-202409181354.AppImage" -O PrusaSlicer.AppImage && \
     chmod +x PrusaSlicer.AppImage
 
-# Expose the port the app runs on. This is a good practice for documentation.
+# Expose the port the app will run on. This is a good practice for documentation.
 EXPOSE 8080
 
-# Set the command to run your Flask application using Python's built-in module.
-# This is the corrected startup command that does not use Gunicorn.
-# It tells Koyeb to run the 'app' object inside your 'app.py' file.
-CMD ["python3", "-m", "flask", "run", "--host=0.0.0.0", "--port=8080"]
+# Set the command to run your Flask application using the Gunicorn production server.
+# This is the corrected, production-ready startup command.
+CMD ["gunicorn", "--workers", "1", "--threads", "8", "--timeout", "300", "--bind", "0.0.0.0:8080", "app:app"]
