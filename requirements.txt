@@ -2,3 +2,4 @@ Flask
 SQLAlchemy
 Flask-SQLAlchemy
 firebase-admin
+gunicorn
